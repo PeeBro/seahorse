@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1602771211450.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "882585021",
+    "id" : "6567235A",
+    "lastKnownWriteTime" : 1602775350,
+    "last_content_update" : 1602775350748,
+    "path" : "~/R/Seahorse_R_pipeline/Experiments/OCR+ECAR-Pipeline.Rmd",
+    "project_path" : "Experiments/OCR+ECAR-Pipeline.Rmd",
+    "properties" : {
+        "cursorPosition" : "277,33",
+        "last_setup_crc32" : "31096857d0a86db3",
+        "scrollLine" : "275"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

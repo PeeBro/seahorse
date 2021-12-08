@@ -1,0 +1,10 @@
+# ------------------------------INSTALL NECESSARY PACKAGES
+install.packages('dplyr')
+install.packages('ggplot2')
+install.packages('tidyr')
+install.packages('tidyverse')
+install.packages('readxl')
+install.packages('here')
+install.packages('reshape2')
+install.packages('magrittr')
+install.packages('kableExtra')

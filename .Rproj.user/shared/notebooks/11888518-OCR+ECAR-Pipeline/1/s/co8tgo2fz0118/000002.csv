@@ -1,0 +1,3 @@
+"0","data$Hg_list %>%  "
+"0","  kable(caption=""Wells removed. Out od 140-160 mmHg interval"") %>% "
+"0","  kable_styling()"
