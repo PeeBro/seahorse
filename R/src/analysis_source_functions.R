@@ -91,14 +91,14 @@ read_xlsx_set <- function(path_, pattern_){
                                             range = "B23:B24",
                                             col_names = " ")[2,1]),1,10)
     #### Add plateID column
-    d$plate_id <- rep(paste0(assay_name, " ", exper_date), times = nrow(d))
+    d$plate_id <- rep(paste0(assay_name, " ", exper_date), times = nrow(d)) #? Why is this needed as repeats?
     
     #Read mmHg from raw data
     raw <- read_xlsx(x,  sheet = "Raw", range = "A1:I3456") # reading only columns 1-9 and first 3 measurements
     # find wells where mmHg is out of range 140 - 160
     out_Hg <- raw %>%
       arrange(Well) %>%
-      filter(Tick %in% c(0,12,24)) %>%
+      filter(Tick %in% c(0,12,24)) %>% #? wHAT IS TICK
       group_by(Well) %>%
       summarise(average_mmHg = mean(`O2 (mmHg)`),
                 out          = ifelse(average_mmHg > 160 | average_mmHg < 140, T, F )) %>%
