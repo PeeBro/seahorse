@@ -204,7 +204,12 @@ idfy_sinleP_outlier <- function(DT, cut.point, x ) {
   while (keep) {
 
     # fit simple categorical regression
-    fit <- lm(x ~ -1 + sample_id + Interval + Well, data = dm)
+    if(length(unique(dm$sample_id)) == 1){ # lm does not work if sample_id only has one level
+      fit <- lm(x ~ -1 + Interval + Well, data = dm)
+    } else {
+      fit <- lm(x ~ -1 + sample_id + Interval + Well, data = dm)
+    }
+    
     # add column with fitted
     dm$fitted <- fitted(fit)
 
@@ -242,7 +247,7 @@ idfy_sinleP_outlier <- function(DT, cut.point, x ) {
     select(-c(contains("y"), "median_sqE", "mad_sqE", "sq_err", "int_mean", "x", "fitted"))
 
   # Print summary
-  cat("Tolat single point outliars: ", nrow(filter(dm_r, is.out.p == T))/size*100, "% \n" )
+  cat("Total single point outliars: ", nrow(filter(dm_r, is.out.p == T))/size*100, "% \n" )
 
   return(dm_r)
 }

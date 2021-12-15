@@ -23,9 +23,9 @@ library(kableExtra)
 source(here("R", "src", "analysis_source_functions.R"))
 
 # INPUT_PATH  <- (here('/Data/INPUT/ConBIS')) # path to the folder of interest
-INPUT_PATH  <- (here('Data', "INPUT", "ConBIS")) # path to the folder of interest
-# OUTPUT_PATH <- (here('/Data/OUTPUT/HF'))
-OUTPUT_PATH <- (here('Data', "OUTPUT", 'HF'))
+INPUT_PATH  <- (here('Data', "INPUT", "SGLT2")) # path to the folder of interest
+# OUTPUT_PATH <- (here('/Data/OUTPUT/HF')) 
+OUTPUT_PATH <- (here('Data', "OUTPUT", 'SGLT2_OUT'))
 ```
 
 
