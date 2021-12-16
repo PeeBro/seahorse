@@ -2,7 +2,7 @@
 title: "OCR+ECAR-Pipeline"
 output: html_document
 params:
-  input_folder: "test"
+  input_folder: "ConBIS"
 ---
 
 
@@ -17,8 +17,8 @@ params:
 
 
 ```{r setup, eval = FALSE, include=FALSE}
-# Make Sure You have all following packages, If not uncomment and run next line:
-#source(here('/R/src/config_file.R')) 
+# Check if all packages are installed and loaded
+source('./R/src/config_file.R')
 here::i_am("Experiments/OCR+ECAR-Pipeline.Rmd")
 
 library(tools)
