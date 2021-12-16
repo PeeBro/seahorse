@@ -3,11 +3,17 @@ title: "OCR+ECAR-Pipeline"
 output: html_document
 ---
 
+```{r}
+
+```
+
 
 ```{r setup, include=FALSE}
 # Make Sure You have all following packages, If not uncoment and run next line:
 #source(here('/R/src/config_file.R')) 
 here::i_am("Experiments/OCR+ECAR-Pipeline.Rmd")
+
+# rmarkdown::render("./Experiments/OCR+ECAR-Pipeline.Rmd")
 #THIS IS TEST NUMBER THREE
 
 library(tools)
@@ -18,6 +24,16 @@ library(readxl)     # Read xlsx file
 library(here)       # Used to set the path to the package dir. on the mashine 
 library(knitr)      # Used for tables 
 library(kableExtra)
+
+
+# Delete old knit files
+knit_cache <- here('Experiments', "OCR+ECAR-Pipeline_cache")
+knit_files <- here("Experiments", "OCR+ECAR-Pipeline_files")
+knit_folders <- c(knit_cache, knit_files)
+for (folder in knit_folders) {
+  if (file.exists(folder))
+  unlink(folder, recursive = T)
+}
 
 # source the functions used in analysis
 source(here("R", "src", "analysis_source_functions.R"))
