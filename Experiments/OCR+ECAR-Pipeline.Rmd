@@ -18,8 +18,7 @@ params:
 
 ```{r setup, eval = FALSE, include=FALSE}
 # Check if all packages are installed and loaded
-source('../R/src/config_file.R') # In theory this should contain only one dot in the beginning. If problems with this line, try to remove one dot
-
+source('./R/src/config_file.R')
 here::i_am("Experiments/OCR+ECAR-Pipeline.Rmd")
 
 library(tools)
@@ -67,7 +66,7 @@ for (folder in knit_folders) {
 
 
 
-rmarkdown::render("../Experiments/OCR+ECAR-Pipeline.Rmd", output_dir = OUTPUT_PATH)
+rmarkdown::render("./Experiments/OCR+ECAR-Pipeline.Rmd", output_dir = OUTPUT_PATH)
 
 
 ```
