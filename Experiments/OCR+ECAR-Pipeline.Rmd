@@ -2,7 +2,7 @@
 title: "OCR+ECAR-Pipeline"
 output: html_document
 params:
-  input_folder: "ConBIS"
+  input_folder: "test"
 ---
 
 
