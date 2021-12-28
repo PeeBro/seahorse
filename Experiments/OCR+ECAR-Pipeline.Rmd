@@ -14,16 +14,26 @@ Step 3: Run the code chunk below
 
 
 ```{r setup, eval = FALSE, include=FALSE}
-# Check if all packages are installed and loaded
-source('../R/src/config_file.R')
+# Set path and load the package "here"
 here::i_am("Experiments/OCR+ECAR-Pipeline.Rmd")
 
+if(!("here" %in% installed.packages()[, "Package"])) {
+  install.packages("here")
+}
+library(here)       # Used to set the path to the package dir. on the mashine 
+
+
+
+# Check if all packages are installed and loaded
+source(here("R", "src", "config_file.R"))
+
+
+# Load libraries
 library(tools)
 library(reshape2)
 library(reshape)
 library(tidyverse)
 library(readxl)     # Read xlsx file
-library(here)       # Used to set the path to the package dir. on the mashine 
 library(knitr)      # Used for tables 
 library(kableExtra)
 library(shiny)
@@ -63,17 +73,8 @@ for (folder in knit_folders) {
 
 
 
-<<<<<<< HEAD
-rmarkdown::render("../Experiments/OCR+ECAR-Pipeline.Rmd", output_dir = OUTPUT_PATH)
-=======
-<<<<<<< HEAD
+
 rmarkdown::render(here('Experiments', "OCR+ECAR-Pipeline.Rmd"), output_dir = OUTPUT_PATH)
-=======
-rmarkdown::render("./Experiments/OCR+ECAR-Pipeline.Rmd", output_dir = OUTPUT_PATH)
->>>>>>> 79782e13870bfa524c2ad6b0bdb3c3e4d0d02c4a
->>>>>>> f6d5b9b11a76f8fc767f7ec1e47d95598b0e5f07
-
-
 ```
 
 
