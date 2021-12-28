@@ -6,14 +6,11 @@ params:
 ---
 
 
-```{r eval = FALSE, include = FALSE}
-# HOW TO USE
+HOW TO USE
 
-# Step 1: Make a new folder in the Data/INPUT folder and place your excel files there
-# Step 2: Write the name of the folder above. Use quotes like this "My_folder"
-# Step 3: Run the code chunk below
-
-```
+Step 1: Make a new folder in the Data/INPUT folder and place your excel files there
+Step 2: Write the name of the folder above. Use quotes like this "My_folder"
+Step 3: Run the code chunk below
 
 
 ```{r setup, eval = FALSE, include=FALSE}
@@ -67,7 +64,7 @@ for (folder in knit_folders) {
 
 
 
-rmarkdown::render("../Experiments/OCR+ECAR-Pipeline.Rmd", output_dir = OUTPUT_PATH)
+rmarkdown::render(here('Experiments', "OCR+ECAR-Pipeline.Rmd"), output_dir = OUTPUT_PATH)
 
 
 ```
