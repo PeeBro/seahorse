@@ -2,7 +2,7 @@
 title: "OCR+ECAR-Pipeline"
 output: html_document
 params:
-  input_folder: "ConBIS"
+  input_folder: "test"
 ---
 
 
@@ -18,8 +18,9 @@ params:
 
 ```{r setup, eval = FALSE, include=FALSE}
 # Check if all packages are installed and loaded
-source('./R/src/config_file.R')
+
 here::i_am("Experiments/OCR+ECAR-Pipeline.Rmd")
+source('../R/src/config_file.R')
 
 library(tools)
 library(reshape2)
@@ -39,7 +40,7 @@ input_folder <- params$input_folder
 # Create output folder
 
 output_folder <- sprintf("%s_OUTPUT", input_folder)
-o_path <- sprintf("./Data/OUTPUT/%s", output_folder)
+o_path <- sprintf("../Data/OUTPUT/%s", output_folder)
 
 if(!dir.exists(o_path)){
   dir.create(path = o_path)
@@ -66,7 +67,7 @@ for (folder in knit_folders) {
 
 
 
-rmarkdown::render("./Experiments/OCR+ECAR-Pipeline.Rmd", output_dir = OUTPUT_PATH)
+# rmarkdown::render("../Experiments/OCR+ECAR-Pipeline.Rmd", output_dir = OUTPUT_PATH)
 
 
 ```
