@@ -13,7 +13,7 @@ Step 2: Write the name of the folder above. Use quotes like this "My_folder"
 Step 3: Run the code chunk below
 
 
-```{r setup, eval = FALSE, include=FALSE}
+```{r eval = FALSE, include=FALSE}
 # Set path and load the package "here"
 here::i_am("Experiments/OCR+ECAR-Pipeline.Rmd")
 
