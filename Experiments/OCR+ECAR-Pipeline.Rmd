@@ -20,11 +20,11 @@ here::i_am("Experiments/OCR+ECAR-Pipeline.Rmd")
 if(!("here" %in% installed.packages()[, "Package"])) {
   install.packages("here")
 }
-library(here)       # Used to set the path to the package dir. on the mashine 
+library(here)       # Used to set the path to the package dir. on the machine 
 
 
 
-# Check if all packages are installed and loaded
+# Check if all packages are installed
 source(here("R", "src", "config_file.R"))
 
 
@@ -73,7 +73,7 @@ for (folder in knit_folders) {
 
 
 
-
+# Initialize the knitting process
 rmarkdown::render(here('Experiments', "OCR+ECAR-Pipeline.Rmd"), output_dir = OUTPUT_PATH)
 ```
 
