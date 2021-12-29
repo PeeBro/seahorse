@@ -14,18 +14,19 @@ Step 2: Write the name of the folder above. Use quotes like this "My_folder"
 Step 3: Run the code chunk below
 
 
-```{r setup, eval = FALSE, include=FALSE}
+```{r eval = FALSE, include=FALSE}
 # Set path and load the package "here"
+
 here::i_am("Experiments/OCR+ECAR-Pipeline.Rmd")
 
 if(!("here" %in% installed.packages()[, "Package"])) {
   install.packages("here")
 }
-library(here)       # Used to set the path to the package dir. on the mashine 
+library(here)       # Used to set the path to the package dir. on the machine 
 
 
 
-# Check if all packages are installed and loaded
+# Check if all packages are installed
 source(here("R", "src", "config_file.R"))
 
 
@@ -47,7 +48,7 @@ input_folder <- params$input_folder
 # Create output folder
 
 output_folder <- sprintf("%s_OUTPUT", input_folder)
-o_path <- sprintf("./Data/OUTPUT/%s", output_folder)
+o_path <- sprintf("../Data/OUTPUT/%s", output_folder)
 
 if(!dir.exists(o_path)){
   dir.create(path = o_path)
@@ -73,8 +74,7 @@ for (folder in knit_folders) {
 }
 
 
-
-
+# Initialize the knitting process
 rmarkdown::render(here('Experiments', "OCR+ECAR-Pipeline.Rmd"), output_dir = OUTPUT_PATH)
 ```
 
