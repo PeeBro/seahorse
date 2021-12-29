@@ -5,6 +5,7 @@ params:
   input_folder: "test"
 ---
 
+THIS IS A TEST
 
 HOW TO USE
 
