@@ -1,39 +1,121 @@
 ---
-title: "OCR+ECAR-Pipeline"
+title: "OCR+ECAR-Pipeline-FOUR-INTERVALS"
 output: html_document
+params:
+  input_folder: "4_intervals"
+editor_options: 
+  chunk_output_type: console
 ---
 
+THIS IS A TEST
 
-```{r setup, include=FALSE}
-# Make Sure You have all following packages, If not uncoment and run next line:
-#source(here('/R/src/config_file.R'))  
+HOW TO USE
+
+Step 1: Make a new folder in the Data/INPUT folder and place your excel files there
+Step 2: Write the name of the folder above. Use quotes like this "My_folder"
+Step 3: Run the code chunk below
 
 
+```{r eval = FALSE, include=FALSE}
+# Set path and load the package "here"
+
+here::i_am("Experiments/OCR+ECAR-Pipeline.Rmd")
+
+if(!("here" %in% installed.packages()[, "Package"])) {
+  install.packages("here")
+}
+library(here)       # Used to set the path to the package dir. on the machine 
+
+
+
+# Check if all packages are installed
+source(here("R", "src", "config_file.R"))
+
+
+# Load libraries
 library(tools)
 library(reshape2)
 library(reshape)
 library(tidyverse)
 library(readxl)     # Read xlsx file
-library(here)       # Used to set the path to the package dir. on the mashine 
 library(knitr)      # Used for tables 
 library(kableExtra)
+library(shiny)
+
+
+
+# Get input folder
+input_folder <- params$input_folder
+
+# Create output folder
+
+output_folder <- sprintf("%s_OUTPUT", input_folder)
+o_path <- here("Data", "OUTPUT", output_folder)
+
+if(!dir.exists(o_path)){
+  dir.create(path = o_path)
+}
+
 
 # source the functions used in analysis
-source(here('/R/src/analysis_source_functions.R')) # you can set full path
+source(here("R", "src", "analysis_source_functions_FOUR_INTERVALS.R"))
 
-INPUT_PATH  <- here('Data/INPUT/ConBis') # path to the foler of interest
-OUTPUT_PATH <- here('Data/OUTPUT')
+# INPUT_PATH  <- (here('/Data/INPUT/ConBIS')) # path to the folder of interest
+INPUT_PATH  <- (here('Data', "INPUT", input_folder)) # path to the folder of interest
+# OUTPUT_PATH <- (here('/Data/OUTPUT/HF')) 
+OUTPUT_PATH <- (here('Data', "OUTPUT", output_folder))
+
+
+# Delete old knit files
+knit_cache <- here('Experiments', "OCR+ECAR-Pipeline_cache")
+knit_files <- here("Data", "OUTPUT", output_folder, "OCR+ECAR-Pipeline_files")
+knit_folders <- c(knit_cache, knit_files)
+for (folder in knit_folders) {
+  if (file.exists(folder))
+  unlink(folder, recursive = T)
+}
+
+
+# Initialize the knitting process
+# rmarkdown::render(here('Experiments', "OCR+ECAR-Pipeline.Rmd"), output_dir = OUTPUT_PATH)
 ```
 
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, paged.print=FALSE}
 # Read The the separate xlsx files from folder, Specify entire path to folder. 
-dm <- read_xlsx_set(INPUT_PATH, ".xlsx")  
-
-hg_out <- dm$Hg_list
-dm <- dm$rates
+data <- read_xlsx_set(INPUT_PATH, ".xlsx")  
+dm <- data$rates
 
 ```
+
+```{r echo=FALSE}
+data$Hg_list %>%  
+  kable(caption="Wells removed. Out od 140-160 mmHg interval") %>% 
+  kable_styling()
+
+```
+
+```{r echo=FALSE}
+data$OCR_background %>%  
+  kable(caption="Background measurements not included in OCR correction") %>% 
+  kable_styling()
+
+```
+
+```{r echo=FALSE}
+data$ECAR_background %>%  
+  kable(caption="Background measurements not included in ECAR correction") %>% 
+  kable_styling()
+
+```
+
+```{r echo=FALSE}
+data$Zero_measurements %>%  
+  kable(caption="Background measurements not included in ECAR correction") %>% 
+  kable_styling()
+
+```
+
 
 ## ----------- OCR ----------- 
 # Filter out no relevant samples 
@@ -57,7 +139,7 @@ d_OCR <- d_OCR %>%
 d_OCR <- d_OCR %>% 
   filter(! sample_id %in% unique(inter$sample_id))
 
-paste0("Samples removed due lack of usable measurements(less than 18  in any interval)")
+paste0("Samples removed due lack of usable measurements(less than 8  in any interval)")
 unique(sumar$sample_id)
 paste0("Samples removed because there are no 4 intervals )")
 unique(inter$sample_id)
@@ -107,8 +189,10 @@ for (smpl in unique(dr_ocr$sample_id)) {
             ggtitle(paste0("ID: ", smpl, "  out: ", format(ptg, digits = 3), "%"))+
             geom_line(aes(group = Well, linetype = Protocol),size = 0.2, color = "grey") +
             geom_point(aes(Time, OCR, color = is.out.p))+
-            xlab("Interval")+
-            ylim(0,300)
+            guides(color=guide_legend(title="Outlier"))+
+            xlab("Measurement")+
+            ylim(0,15)+
+            ylab("OCR (Normalized)")
 
   print(plot +theme_bw())
 }
@@ -125,11 +209,13 @@ for (smpl in unique(dr_ocr$sample_id)) {
 #    print(plot +theme_bw())
 # }
 ```
+# Get Estimates
+
 ## Bioenergetics and Estimates 
 # Estimates
-Estimates are taken by median of measurements from each interval in sample. Estimates are stored together with other details about the intervals in files called <Method>-Estimated_values.csv in OUTPUT folder.
+Estimates are taken by median of measurements from each interval in sample. Estimates are  stored together with other details about the intervals in files called <Method>-Estimated_values.csv in OUTPUT folder.
 
-If you want to see or change how they are computed see the function compute_bioenergetics_()in file analysis_source_functions.R
+If you want to see or change how they are computed see the function compute_bioenergetics_ ()in file analysis_source_functions.R
 
 ```{r echo=FALSE}
 norm.be <- compute_bioenergetics_(dr_ocr, "OCR")
@@ -137,8 +223,9 @@ log.be  <- compute_bioenergetics_(dr_ocr, "LOCR")
 
 write_csv(norm.be$estimates, paste0(OUTPUT_PATH,"/OCR-Estimated_values.csv"))
 write_csv(log.be$estimates, paste0(OUTPUT_PATH,"/LOCR-Estimates_values.csv"))
-write_csv(norm.be$bioenergetics, paste0(OUTPUT_PATH,"/OCR-Bio-energetics-table.csv"))
-write_csv(log.be$bioenergetics, paste0(OUTPUT_PATH,"/LOCR-Bio-energetics-table.csv"))
+write_csv(norm.be$bioenergetics, paste0(OUTPUT_PATH,"/OCR-BE-table.csv"))
+write_csv(log.be$bioenergetics, paste0(OUTPUT_PATH,"/LOCR-BE-table.csv"))
+
 ```
 
 ```{r echo=FALSE, echo=FALSE}
@@ -183,7 +270,7 @@ If you want to see or change how they are computed see the function compute_bioe
 # ADD coefficients of variation
 # normal scale Bioenergetics 
 
-n.bio <- melt(as.data.frame(norm.be$bioenergetics))
+n.bio <- melt(norm.be$bioenergetics)
 
 n.bio %>% 
   filter(variable != "Other") %>% 
@@ -197,7 +284,7 @@ n.bio %>%
 
 
 # log scale Bioenergetics 
-l.bio   <- melt(as.data.frame(log.be$bioenergetics ))
+l.bio   <- melt(log.be$bioenergetics )
 l.bio %>% 
   filter(variable != "Other") %>% 
   ggplot(aes(variable, value, fill = variable))+
@@ -240,7 +327,7 @@ l.bio[1:4,] %>%
 
 # Groups 
 
-If the sample_id of your samples contains letters A or B the following graph will plot bioenergetics of the two grups. 
+If the sample_id of your samples contains letters A or B following graph will plot bioenergetics of the two grups. 
 It is suggested to use this plot only when you are looking at grouped samples and project name shouldn't contain letters A or B. Any sample that is not labeled will be part of B group. 
 
 You can change the A and B letters in the markdown code to compare other groups. 
@@ -268,7 +355,7 @@ l.bio %>%
   geom_jitter(width = 0.1, show.legend = FALSE, size = 0.5)+
   xlab("Bio-Energetics")+
   ylab("OCR")+
-  facet_grid(. ~ variable )+
+  facet_grid(. ~ variable ) +
   theme_bw()
 
 
@@ -355,12 +442,11 @@ for (smpl in unique(dr_ecar$sample_id)) {
 norm.be.ECAR <- compute_bioenergetics_(dr_ecar, "ECAR") 
 log.be.ECAR  <- compute_bioenergetics_(dr_ecar, "LECAR") 
 
-write_csv(norm.be$estimates, paste0(OUTPUT_PATH,"/ECAR-Estimated_values.csv"))
-write_csv(log.be$estimates, paste0(OUTPUT_PATH,"/LECAR-Estimated_values.csv"))
-write_csv(norm.be$bioenergetics, paste0(OUTPUT_PATH,"/ECAR-Bio-energetics-table.csv"))
-write_csv(log.be$bioenergetics, paste0(OUTPUT_PATH,"/LECAR-Bio-energetics-table.csv"))
+write_csv(norm.be.ECAR$estimates, paste0(OUTPUT_PATH,"/ECAR-Estimated_values.csv"))
+write_csv(log.be.ECAR$estimates, paste0(OUTPUT_PATH,"/LECAR-Estimated_values.csv"))
+write_csv(norm.be.ECAR$bioenergetics, paste0(OUTPUT_PATH,"/ECAR-BE-table.csv"))
+write_csv(log.be.ECAR$bioenergetics, paste0(OUTPUT_PATH,"/LECAR-BE-table.csv"))
 ```
-
 #Estimates
 
 ```{r echo=FALSE}
@@ -399,7 +485,7 @@ log.be.ECAR$estimates %>%
 # ADD coefficients of variation
 # normal scale Bioenergetics 
 
-n.bio.ECAR <- melt(as.data.frame(norm.be.ECAR$bioenergetics))
+n.bio.ECAR <- melt(norm.be.ECAR$bioenergetics)
 n.bio.ECAR %>% 
   filter(variable != "Other") %>% 
   ggplot(aes(variable, value, fill = variable ))+
@@ -412,7 +498,7 @@ n.bio.ECAR %>%
 
 
 # log scale Bioenergetics 
-l.bio.ECAR   <- melt(as.data.frame(log.be.ECAR$bioenergetics ))
+l.bio.ECAR   <- melt(log.be.ECAR$bioenergetics )
 l.bio.ECAR %>% 
   filter(variable != "Other") %>% 
   ggplot(aes(variable, value, fill = variable ))+
@@ -435,7 +521,7 @@ write_csv(n.bio.ECAR, paste0(OUTPUT_PATH,"/ECAR-BioEnergetics.csv"))
 # be.er  <- left_join(l.bio.ECAR, st.err, by = c("Sample", "variable"))  
 # be.er <- arrange(be.er, Sample)
 write_csv(l.bio.ECAR, paste0(OUTPUT_PATH,"/logECAR-BioEnergetics.csv"))
-  
+
 
 
 

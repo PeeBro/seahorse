@@ -52,56 +52,60 @@ correct_background_ECAR <- function(d){
 }
 
 # --------------------------------------------------------------------------------------CONSTRUCT DATA
+get_intervals <- function(x, y){
+  # Identifies Interval form measurement time  and Protocol info. Used with mapply
+  # INPUT x = Measurement, y = Protocol
+  # OUTPUT = Interval
+  return( ifelse(y == "Back", "Back",
+          ifelse(as.character(x) %in% c("1", "2", "3", "4"), "Int1",
+          ifelse(as.character(x) %in% c("5", "6", "7"), "Int2",
+          ifelse(as.character(x) %in% c("8", "9", "10"), "Int3",
+          ifelse(as.character(x) %in% c("11", "12", "13"), "Int4", "Other" ))))))
+}
 
 read_xlsx_set <- function(path_, pattern_){
   # returns a combined dataframe from all .xlsx files in folder (path_).
   # can specify pattern to distinguish "group1" "group2"  treatment as: pattern_ = "*group1/group2.xlsx"
-
-  get_intervals <- function(x, y){
-    # Identifies Interval form measurement time  and Protocol info. Used with mapply
-    # INPUT x = Measurement, y = Protocol
-    # OUTPUT = Interval
-    return( ifelse(y == "Back", "Back",
-            ifelse(grepl(as.character(x), "123"), "Int1",
-            ifelse((grepl(as.character(x), "456") & (y == "Olig"|y == "Glyc")), "Int2",
-            ifelse((grepl(as.character(x), "456") & y == "FCCP"), "Int3",
-            ifelse(grepl(as.character(x), "789") & y == "Glyc" , "Int5",
-            ifelse(grepl(as.character(x), "789") & y != "Glyc", "Int4", "Other" )))))))
-  }
-
+  
   # list of filenames
   files    <- list.files(path=path_, pattern=pattern_, full.names=TRUE, recursive=FALSE)
   merged_d <- data_frame()
   Hg_out   <- data_frame()
-
+  ECAR_background_out <- data_frame()
+  OCR_background_out  <- data_frame()
+  
   # for every file create a data frame and merge into one
-  list.data_frames <- lapply(files, function(x){
+  for (x in files) {
     # --------- READ DATA --------- #
     # Read rates
-    d <- read_excel(x,  sheet = "Rate")
-
+    d <- read_xlsx(x,  sheet = "Normalized Rate")
+    
     # Read assay configuration
-    head       <- read_excel(x,  sheet = "Assay Configuration")
-    assay_name <- as.character(head[3,2])
-    exper_date <- substr(as.character(head[23,2]),1,10)
-    rm(head)
+    assay_name <- toString( read_xlsx(x,  
+                                      sheet = "Assay Configuration", 
+                                      range = "B3:B4",
+                                      col_names = " ")[2,1])
+    exper_date <- substr(toString(read_xlsx(x,  
+                                            sheet = "Assay Configuration", 
+                                            range = "B23:B24",
+                                            col_names = " ")[2,1]),1,10)
     #### Add plateID column
-    d$plate_id <- rep(paste0(assay_name, " ", exper_date), times = nrow(d))
-
+    d$plate_id <- rep(paste0(assay_name, " ", exper_date), times = nrow(d)) #? Why is this needed as repeats?
+    
     #Read mmHg from raw data
-    raw <- read_excel(x,  sheet = "Raw")
+    raw <- read_xlsx(x,  sheet = "Raw", range = "A1:I3456") # reading only columns 1-9 and first 3 measurements
+    # find wells where mmHg is out of range 140 - 160
     out_Hg <- raw %>%
       arrange(Well) %>%
-      filter(Measurement %in% c(1,2,3) & Tick %in% c(0,12,24)) %>%
-      select(c("Well", "Tick", "Measurement", "O2 (mmHg)")) %>%
+      filter(Tick %in% c(0,12,24)) %>% #? wHAT IS TICK
       group_by(Well) %>%
       summarise(average_mmHg = mean(`O2 (mmHg)`),
-                out          = ifelse(average_mmHg > 160 | average_mmHg < 140, T, F )) %>%
+                out          = ifelse(average_mmHg > 160 | average_mmHg < 120, T, F )) %>%
       filter(out == T)
-
+    
     # remove Unassigned wells
     d <- d %>%filter(Group != "Unassigned")
-
+    
     #### remove Background from OCR  and ECAR ####
     is_norm_OCR  <- mean(filter(d, Group == "Background")$OCR) == 0
     is_norm_ECAR <- mean(filter(d, Group == "Background")$ECAR) == 0
@@ -111,59 +115,83 @@ read_xlsx_set <- function(path_, pattern_){
       corr <- correct_background_ECAR(d)
       d    <- corr$data
       out  <- corr$removed
-      #cat("There were ", nrow(out), " ECAR background measurements removed on plate: ", unique(d$plate_id), "\n")
+      # to report which measurements were removed
+      removed_ECAR_background <- data_frame(
+        Plate = unique(d$plate_id),
+        N_out = nrow(out),
+        Wells = paste0(unique(out$Well), collapse = " "),
+        Measurement = paste0(out$Measurement, collapse = " "))
+      ECAR_background_out <- rbind(ECAR_background_out, removed_ECAR_background)
       #OCR
       corr <- correct_background_OCR(d)
       d    <- corr$data
       out  <- corr$removed
-      #cat("There were ", nrow(out), " OCR background measurements removed on plate: ", unique(d$plate_id), "\n")
-      d <- d %>% filter(Group != "Background")
+      # to report which measurements were removed      
+      removed_OCR_background <- data_frame(
+        Plate = unique(d$plate_id),
+        N_out = nrow(out),
+        Wells = paste0(unique(out$Well), collapse = " "),
+        Measurement = paste0(out$Measurement, collapse = " "))
+      OCR_background_out <- rbind(OCR_background_out, removed_OCR_background)
+      
+      d <- d %>% filter(Group != "Background") %>% 
+        drop_na()
     }
+    
+    # Remove samples where OCR or ECAR is 0
 
+    out <- d %>% filter(OCR == 0 | ECAR == 0)
+    
+    zero_OCR_ECAR <- data_frame(
+      Plate = unique(out$plate_id),
+      N_out = nrow(out),
+      Wells = paste0(unique(out$Well), collapse = " "),
+      Measurement = paste0(out$Measurement, collapse = " "))
+    
+    d <- d %>%filter(!(OCR == 0 | ECAR == 0))
+    
+    
     # Filter out whole wells where average of first ticks from first three measurements
     # are exceeding interval 140 - 160 mmHg
     # Filtering has to be done after background norm. to avoid removing controll backgrounds
     d <- d %>% filter(! Well %in% out_Hg$Well)
     # make line for report matrix
-    removed_Hg <- data_frame(Plate = unique(d$plate_id),
-                             N_out = nrow(out_Hg),
-                             Wells = paste0(out_Hg$Well, collapse = ""))
+    removed_Hg <- data_frame(
+      Plate = unique(d$plate_id),
+      N_out = nrow(out_Hg),
+      Wells = paste0(out_Hg$Well, collapse = " "))
     Hg_out <- rbind(Hg_out, removed_Hg)
-    #cat(paste0(nrow(out_Hg), " whole wells removed out from 140 - 160 mmHg interval. Plate: ", unique(d$plate_id) ,"\n"))
     rm(raw, out_Hg)
     # ----------------
-
+    
     ### Add Protocol column substring of Group column before "-" character
     d$Protocol <- substr(sub("-.*","", d$Group), start = 1, stop = 4)
     ### add project column
     d$Project  <- sub("#.*", "", sub(".*-","", d$Group))
     ### Add interval column
     d$Interval <- mapply(get_intervals, d$Measurement, d$Protocol)
-
+    
     ### Add column with time on experiment scale
     d <- d %>% mutate(Time = ifelse(Interval == "Int1" | Interval == "Int2", Measurement,
-                              ifelse(Interval == "Int3" | Interval == "Int4", Measurement + 3, Measurement + 6)))
-
+                                    ifelse(Interval == "Int3" | Interval == "Int4", Measurement + 3, Measurement + 6)))
+    
     # the entries with blanks should be filtered, Must be here !
     d <- d %>%filter(!is.na(Protocol))
-
-
+    
     ### Add log OCR,  log ECAR
     d$LOCR  <- log(d$OCR)
     d$LECAR <- log(d$ECAR)
-    d <- d %>% mutate(Power = OCR^0.5)
-
+    
     ### Add sample ID string Followed # sing in Group Column
     d$Code <- sub(".*#","", d$Group)
     d <- d %>% mutate(sample_id = paste0(Code, "-", Project, " | ", exper_date))
-
-    return(d)
-  })
-  merged_d <- do.call(rbind, list.data_frames)
-
-  return(list(rates = merged_d, Hg_list = Hg_out))
+    
+    merged_d <- rbind(merged_d, d)
+  }
+  
+  
+  return(list(rates = merged_d, Hg_list = Hg_out, ECAR_background = ECAR_background_out, OCR_background = OCR_background_out, Zero_measurements = zero_OCR_ECAR))
 }
-
 # -------------------------------------------------------------- IDENTIFY SINGLE POINT OUTLIARS
 # USED IN WORKING PIPELINE
 
@@ -188,7 +216,12 @@ idfy_sinleP_outlier <- function(DT, cut.point, x ) {
   while (keep) {
 
     # fit simple categorical regression
-    fit <- lm(x ~ -1 + sample_id + Interval + Well, data = dm)
+    if(length(unique(dm$sample_id)) == 1){ # lm does not work if sample_id only has one level
+      fit <- lm(x ~ -1 + Interval + Well, data = dm)
+    } else {
+      fit <- lm(x ~ -1 + sample_id + Interval + Well, data = dm)
+    }
+    
     # add column with fitted
     dm$fitted <- fitted(fit)
 
@@ -226,7 +259,7 @@ idfy_sinleP_outlier <- function(DT, cut.point, x ) {
     select(-c(contains("y"), "median_sqE", "mad_sqE", "sq_err", "int_mean", "x", "fitted"))
 
   # Print summary
-  cat("Tolat single point outliars: ", nrow(filter(dm_r, is.out.p == T))/size*100, "% \n" )
+  cat("Total single point outliars: ", nrow(filter(dm_r, is.out.p == T))/size*100, "% \n" )
 
   return(dm_r)
 }
@@ -319,8 +352,8 @@ idfy_outliar <- function(DT, x, cut.well, cut.point ){
     select(-c(contains("y"), "median_sqE", "mad_sqE", "sq_err", "int_mean"))
 
   # Print summary
-  cat("Tolat well outliars: ", nrow(filter(dm_r, is.out.w == T))/nrow(dm_r)*100, "% \n" )
-  cat("Tolat single point outliars: ", nrow(filter(dm_r, is.out.p == T))/nrow(dm_r)*100, "% \n" )
+  cat("Total well outliars: ", nrow(filter(dm_r, is.out.w == T))/nrow(dm_r)*100, "% \n" )
+  cat("Total single point outliars: ", nrow(filter(dm_r, is.out.p == T))/nrow(dm_r)*100, "% \n" )
 
   return(dm_r)
 }
@@ -338,11 +371,11 @@ compute_bioenergetics_ <- function(dm_r, method) {
     summarise(mean = median(x), SD = sd(x), SE = sd(x)/sqrt(n()), size = n(), CV = (SD/mean)*100 )
 
   # form datafames
-  estimates  <- cast(estim_mean, sample_id~Interval, value = "mean")
-  deviations <- cast(estim_mean, sample_id~Interval, value = "SD")
-  SErrs      <- cast(estim_mean, sample_id~Interval, value = "SE")
-  numbers    <- cast(estim_mean, sample_id~Interval, value = "size")
-  CVs        <- cast(estim_mean, sample_id~Interval, value = "CV")
+  estimates  <- as.data.frame(cast(estim_mean, sample_id~Interval, value = "mean"))
+  deviations <- as.data.frame(cast(estim_mean, sample_id~Interval, value = "SD"))
+  SErrs      <- as.data.frame(cast(estim_mean, sample_id~Interval, value = "SE"))
+  numbers    <- as.data.frame(cast(estim_mean, sample_id~Interval, value = "size"))
+  CVs        <- as.data.frame(cast(estim_mean, sample_id~Interval, value = "CV"))
 
   # compute Bioenergetics according to the method used
 
