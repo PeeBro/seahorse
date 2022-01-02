@@ -430,38 +430,38 @@ compute_bioenergetics_ <- function(dm_r, method) {
   } else if (method == "ECAR") {
     bio_e <- estimates %>%
       mutate(Sample            = sample_id,
-             Basal.Glyco       = Int1 - Int5,
-             Max.Glyco.Cpcty   = Int2 - Int5,
-             Glyco.Rsrv.Cpcty  = Int2 - Int1,
-             Non.Glyco.Acid.   = Int5) %>%
+             Basal.Glyco       = Int2 - Int4,
+             Max.Glyco.Cpcty   = Int3 - Int4,
+             Glyco.Rsrv.Cpcty  = Int3 - Int2,
+             Non.Glyco.Acid.   = Int4) %>%
       select(c("Sample", "Basal.Glyco", "Max.Glyco.Cpcty", "Glyco.Rsrv.Cpcty", "Non.Glyco.Acid."))
 
     # standard errors of mean differences
     sd_n   <- cbind(sd = deviations, n = numbers)
     st_errors <- sd_n %>%
       mutate(Sample            = sd.sample_id,
-             Basal.Glyco       = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int5^2)/n.Int5)),
-             Max.Glyco.Cpcty   = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int5^2)/n.Int5)),
-             Glyco.Rsrv.Cpcty  = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int1^2)/n.Int1)),
-             Non.Glyco.Acid.   = sd.Int5/sqrt(n.Int5)) %>%
+             Basal.Glyco       = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
+             Max.Glyco.Cpcty   = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int4^2)/n.Int4)),
+             Glyco.Rsrv.Cpcty  = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int2^2)/n.Int2)),
+             Non.Glyco.Acid.   = sd.Int4/sqrt(n.Int4)) %>%
       select(c("Sample", "Basal.Glyco", "Max.Glyco.Cpcty", "Glyco.Rsrv.Cpcty", "Non.Glyco.Acid."))
   } else if (method == "LECAR") {
     bio_e <- estimates %>%
       mutate(Sample            = sample_id,
-             log.Basal.Glyco       = Int1 - Int5,
-             log.Max.Glyco.Cpcty   = Int2 - Int5,
-             log.Glyco.Rsrv.Cpcty  = Int2 - Int1,
-             log.Non.Glyco.Acid.   = Int5) %>%
+             log.Basal.Glyco       = Int2 - Int4,
+             log.Max.Glyco.Cpcty   = Int3 - Int4,
+             log.Glyco.Rsrv.Cpcty  = Int3 - Int2,
+             log.Non.Glyco.Acid.   = Int4) %>%
       select(c("Sample", "log.Basal.Glyco", "log.Max.Glyco.Cpcty", "log.Glyco.Rsrv.Cpcty", "log.Non.Glyco.Acid."))
 
     # standard errors of mean differences
     sd_n   <- cbind(sd = deviations, n = numbers)
     st_errors <- sd_n %>%
       mutate(Sample                = sd.sample_id,
-             log.Basal.Glyco       = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int5^2)/n.Int5)),
-             log.Max.Glyco.Cpcty   = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int5^2)/n.Int5)),
-             log.Glyco.Rsrv.Cpcty  = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int1^2)/n.Int1)),
-             log.Non.Glyco.Acid.   = sd.Int5/sqrt(n.Int5)) %>%
+             log.Basal.Glyco       = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
+             log.Max.Glyco.Cpcty   = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int4^2)/n.Int4)),
+             log.Glyco.Rsrv.Cpcty  = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int2^2)/n.Int2)),
+             log.Non.Glyco.Acid.   = sd.Int4/sqrt(n.Int4)) %>%
       select(c("Sample", "log.Basal.Glyco", "log.Max.Glyco.Cpcty", "log.Glyco.Rsrv.Cpcty", "log.Non.Glyco.Acid."))
 
   }

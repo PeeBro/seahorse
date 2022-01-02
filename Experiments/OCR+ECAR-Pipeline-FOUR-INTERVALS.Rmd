@@ -77,7 +77,7 @@ for (folder in knit_folders) {
 
 
 # Initialize the knitting process
-# rmarkdown::render(here('Experiments', "OCR+ECAR-Pipeline.Rmd"), output_dir = OUTPUT_PATH)
+rmarkdown::render(here('Experiments', "OCR+ECAR-Pipeline-FOUR-INTERVALS.Rmd"), output_dir = OUTPUT_PATH)
 ```
 
 
@@ -121,7 +121,7 @@ data$Zero_measurements %>%
 # Filter out no relevant samples 
 ```{r  echo=FALSE}
 # perep for OCR interval 5 not used  
-d_OCR  <- dm %>% filter(Interval != "Int5")
+d_OCR  <- dm
 # filter out samples with any of intervals having less than 8 measurements 
 sumar <- d_OCR %>%
   group_by(sample_id, Interval) %>% 
@@ -367,13 +367,14 @@ l.bio %>%
 # Filter out no relevant samples 
 
 ```{r echo=FALSE}
-# perep for OCR interval 5 not used  
-d_ECAR <- dm %>% filter(!Interval %in% c("Int4","Int3") & Measurement != 7 )# & Protocol == "Glyco")
+# perep for ECAR interval 1 not used  
+d_ECAR <- dm %>% filter(!Interval %in% c("Int1"))
+                        
 # filter out samples with any of intervals having less than 8 measurements 
 sumar <- d_ECAR %>%
   group_by(sample_id, Interval) %>% 
   summarise(n = n()) %>% 
-  filter(n < 8 | Interval == "Int1" & n < 18 | Interval == "Int2" & n < 18 |Interval == "Int5" & n < 12 )
+  filter(n < 8 | Interval == "Int2" & n < 18 | Interval == "Int3" & n < 18 |Interval == "Int4" & n < 12 )
 # number of intervals has to be 3 or discarted 
 inter <- d_ECAR %>% 
   group_by(sample_id) %>% 
