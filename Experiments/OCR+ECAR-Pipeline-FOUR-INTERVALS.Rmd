@@ -1,19 +1,24 @@
 ---
 title: "OCR+ECAR-Pipeline-FOUR-INTERVALS"
-output: html_document
+output: 
+  html_document:
+    number_sections: true
 params:
   input_folder: "4_intervals"
 editor_options: 
   chunk_output_type: console
 ---
+<br>
+<br>
+<br>
+<br>
 
-THIS IS A TEST
+# HOW TO USE
 
-HOW TO USE
+Step 1: Make a new folder in the Data/INPUT folder and place your excel files there <br>
+Step 2: Write the name of the folder above. Use quotes like this "My_folder" <br>
+Step 3: Run the code chunk below <br>
 
-Step 1: Make a new folder in the Data/INPUT folder and place your excel files there
-Step 2: Write the name of the folder above. Use quotes like this "My_folder"
-Step 3: Run the code chunk below
 
 
 ```{r eval = FALSE, include=FALSE}
@@ -88,6 +93,8 @@ dm <- data$rates
 
 ```
 
+# Remove wells based on pressure measurements + correct background
+
 ```{r echo=FALSE}
 data$Hg_list %>%  
   kable(caption="Wells removed. Out od 140-160 mmHg interval") %>% 
@@ -116,9 +123,11 @@ data$Zero_measurements %>%
 
 ```
 
+<br>
+<br>
 
-## ----------- OCR ----------- 
-# Filter out no relevant samples 
+# OCR 
+## Filter out irrelevant samples 
 ```{r  echo=FALSE}
 # perep for OCR interval 5 not used  
 d_OCR  <- dm
@@ -145,8 +154,8 @@ paste0("Samples removed because there are no 4 intervals )")
 unique(inter$sample_id)
 ```
 
-# Identyfy Outliars 
-Removed outliars in each iteration:
+## Identify Outliers 
+Removed outliers in each iteration:
 ```{r echo=FALSE, echo=FALSE}
 # Identify Outliars 
 # DT = loaded dataframe 
@@ -179,15 +188,15 @@ dr_ocr %>%
 
 ```
 
-# Print schemes of removed points for all samples 
+## Print schemes of removed points for all samples 
 ```{r echo=FALSE, echo=FALSE, cache = TRUE}
 
 for (smpl in unique(dr_ocr$sample_id)) {
   d    <- filter(dr_ocr, sample_id == smpl)
   ptg  <- nrow(filter(d, is.out.p == T))/nrow(d)*100
   plot <- ggplot(d, aes(Time, OCR))+
-            ggtitle(paste0("ID: ", smpl, "  out: ", format(ptg, digits = 3), "%"))+
-            geom_line(aes(group = Well, linetype = Protocol),size = 0.2, color = "grey") +
+            ggtitle(paste0("ID: ", smpl, " |  Outliers: ", format(ptg, digits = 3), "%"))+
+            geom_line(aes(group = Well),size = 0.2, color = "grey") +
             geom_point(aes(Time, OCR, color = is.out.p))+
             guides(color=guide_legend(title="Outlier"))+
             xlab("Measurement")+
@@ -209,10 +218,10 @@ for (smpl in unique(dr_ocr$sample_id)) {
 #    print(plot +theme_bw())
 # }
 ```
-# Get Estimates
+
 
 ## Bioenergetics and Estimates 
-# Estimates
+### Estimates
 Estimates are taken by median of measurements from each interval in sample. Estimates are  stored together with other details about the intervals in files called <Method>-Estimated_values.csv in OUTPUT folder.
 
 If you want to see or change how they are computed see the function compute_bioenergetics_ ()in file analysis_source_functions.R
@@ -235,7 +244,7 @@ norm.be$estimates[1:4,] %>%
   kable_styling(full_width = F)
 ```
 
-See diferent distribution of the estimates
+
 ```{r echo=FALSE}
 # norm estimates boxplots
 ggplot(norm.be$estimates)+
@@ -243,7 +252,7 @@ ggplot(norm.be$estimates)+
   geom_boxplot(aes(Interval,mean), width = 0.6, outlier.size = -1, show.legend = FALSE, fill = "pink")+
   geom_jitter(aes(Interval,mean), width = 0.2, show.legend = FALSE, size = 0.5 )+
   xlab("Intervals")+
-  ylab("logOCR")+
+  ylab("OCR")+
   theme_bw()
 
 # log estimates boxplots
@@ -258,7 +267,7 @@ ggplot(log.be$estimates)+
 ```
 
 
-# Bioenergetics
+### Bioenergetics
 Bioenergetics are computed from estimates, there there are two sets of bioenergetics provided. 
 
   1. Ratio Based, computed from log(OCR) estimates Located in OUTPUT/LogOCR-BioEnergetics.csv
@@ -266,7 +275,7 @@ Bioenergetics are computed from estimates, there there are two sets of bioenerge
   2. Difference based, computed from OCR esimates Located in OUTPUT/OCR-BioEnergetics.csv
 If you want to see or change how they are computed see the function compute_bioenergetics_() in file analysis_source_functions.R
 
-```{r message=FALSE, warning=FALSE, echo=FALSE}
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
 # ADD coefficients of variation
 # normal scale Bioenergetics 
 
@@ -318,21 +327,21 @@ write_csv(l.bio, paste0(OUTPUT_PATH,"/LogOCR-BioEnergetics.csv"))
 
 ```
 
-```{r echo=FALSE, echo=FALSE}
+```{r echo=FALSE}
 # Print interval estimates 
 l.bio[1:4,] %>%
   kable(digits = 3, caption = "Example of Bioenergetics file ") %>%
   kable_styling(full_width = F)
 ```
 
-# Groups 
+### Groups 
 
 If the sample_id of your samples contains letters A or B following graph will plot bioenergetics of the two grups. 
 It is suggested to use this plot only when you are looking at grouped samples and project name shouldn't contain letters A or B. Any sample that is not labeled will be part of B group. 
 
 You can change the A and B letters in the markdown code to compare other groups. 
 
-```{r }
+```{r, echo=FALSE, fig.width = 10 }
 
 # difference based BE
 n.bio %>% 
@@ -350,7 +359,7 @@ n.bio %>%
 l.bio %>% 
   mutate(Group = ifelse(grepl("A", Sample), "A", "B")) %>% # change "A" and "B" for any character or string
   ggplot(aes(Group, value, fill = variable))+
-  ggtitle("OCR Normal scale Bio-Energetics biological groups ")+
+  ggtitle("OCR Log scale Bio-Energetics biological groups ")+
   geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
   geom_jitter(width = 0.1, show.legend = FALSE, size = 0.5)+
   xlab("Bio-Energetics")+
@@ -362,9 +371,9 @@ l.bio %>%
 ```
 
 
-## ------------ ECAR ------------
+# ECAR
 
-# Filter out no relevant samples 
+## Filter out irrelevant samples 
 
 ```{r echo=FALSE}
 # perep for ECAR interval 1 not used  
@@ -391,7 +400,7 @@ paste0("Samples removed because don't have 3 Intervals")
 unique(inter$sample_id)
 ```
 
-# Remove outliars
+## Remove outliers
 ```{r echo=FALSE, echo=FALSE}
 # Identify Outliars 
 # DT = loaded dataframe 
@@ -423,20 +432,20 @@ dr_ecar %>%
 ```
 
 
-
+## Print schemes of removed points for all samples
 ```{r echo=FALSE}
 for (smpl in unique(dr_ecar$sample_id)) {
   plot <- ggplot(filter(dr_ecar, sample_id == smpl), aes(Measurement, ECAR))+
             ggtitle(paste0("SAMPLE:  ", smpl))+
             geom_line(aes(group = Well),size = 0.2, color = "grey") +
             geom_point(aes(Measurement, ECAR, color = is.out.p))+
-            xlab("Interval")
+            guides(color=guide_legend(title="Outlier"))+
+            xlab("Measurement")
   
   print(plot +theme_bw())
 }
 ```
 
-# Estimates
 ## Bioenergetics and Estimates 
 
 ```{r echo=FALSE}
@@ -448,7 +457,7 @@ write_csv(log.be.ECAR$estimates, paste0(OUTPUT_PATH,"/LECAR-Estimated_values.csv
 write_csv(norm.be.ECAR$bioenergetics, paste0(OUTPUT_PATH,"/ECAR-BE-table.csv"))
 write_csv(log.be.ECAR$bioenergetics, paste0(OUTPUT_PATH,"/LECAR-BE-table.csv"))
 ```
-#Estimates
+### Estimates
 
 ```{r echo=FALSE}
 
@@ -457,10 +466,10 @@ norm.be.ECAR$estimates %>%
   ggplot(aes(Interval,mean))+
   ggtitle("ECAR Estimates natural scale")+
   geom_boxplot( width = 0.6, outlier.size = -1, show.legend = FALSE, fill="pink", alpha = 0.7)+
-  geom_line(aes(group = sample_id, Interval,mean), col = "grey", size = .1, show.legend = FALSE)+
+  # geom_line(aes(group = sample_id, Interval,mean), col = "grey", size = .1, show.legend = FALSE)+
   geom_jitter( width = 0.2, show.legend = FALSE, size = 0.5 , alpha = 0.7)+
   xlab("Intervals")+
-  ylab("logOCR")+
+  ylab("logECAR")+
   theme_bw()
 
 # log estimates boxplots
@@ -468,10 +477,10 @@ log.be.ECAR$estimates %>%
   ggplot(aes(Interval,mean))+
   ggtitle("Log ECAR Estimates")+
   geom_boxplot(width = 0.6, outlier.size = -1, show.legend = FALSE, fill="pink", alpha = 0.7)+
-  geom_line(aes(group = sample_id, Interval,mean), col = "grey", size = .1, show.legend = FALSE)+
+  # geom_line(aes(group = sample_id, Interval,mean), col = "grey", size = .1, show.legend = FALSE)+
   geom_jitter(width = 0.2, show.legend = FALSE, size = 0.5 )+
   xlab("Intervals")+
-  ylab("logOCR")+
+  ylab("logECAR")+
   theme_bw() 
   
   
@@ -480,9 +489,9 @@ log.be.ECAR$estimates %>%
 ```
 
 
-# Bioenergetics
+### Bioenergetics
 
-```{r message=FALSE, warning=FALSE, echo=FALSE}
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width = 8}
 # ADD coefficients of variation
 # normal scale Bioenergetics 
 
@@ -503,7 +512,7 @@ l.bio.ECAR   <- melt(log.be.ECAR$bioenergetics )
 l.bio.ECAR %>% 
   filter(variable != "Other") %>% 
   ggplot(aes(variable, value, fill = variable ))+
-  ggtitle("Difference based natural scale Bio-Energetics ECAR")+
+  ggtitle("Difference based log scale Bio-Energetics ECAR")+
   geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
   geom_jitter(width = 0.1, show.legend = FALSE, size = 0.5 )+
   xlab("Bio-Energetics")+
@@ -528,18 +537,18 @@ write_csv(l.bio.ECAR, paste0(OUTPUT_PATH,"/logECAR-BioEnergetics.csv"))
 
 ```
 
-#Groups
+### Groups
 
-```{r echo=FALSE}
+```{r echo=FALSE, fig.width=8}
 # difference based BE
 n.bio.ECAR %>% 
   mutate(Group = ifelse(grepl("A", Sample), "A", "B")) %>% 
   ggplot(aes(Group, value, fill = variable))+
-  ggtitle("OCR Normal scale Bio-Energetics biological groups ")+
+  ggtitle("ECAR Normal scale Bio-Energetics biological groups ")+
   geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
   geom_jitter(width = 0.1, show.legend = FALSE, size = 0.5)+
   xlab("Bio-Energetics")+
-  ylab("OCR")+
+  ylab("ECAR")+
   facet_grid(. ~ variable ) +
   theme_bw()
 
@@ -547,11 +556,11 @@ n.bio.ECAR %>%
 l.bio.ECAR %>% 
   mutate(Group = ifelse(grepl("A", Sample), "A", "B")) %>% 
   ggplot(aes(Group, value, fill = variable))+
-  ggtitle("OCR Normal scale Bio-Energetics biological groups ")+
+  ggtitle("ECAR Log scale Bio-Energetics biological groups ")+
   geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
   geom_jitter(width = 0.1, show.legend = FALSE, size = 0.5)+
   xlab("Bio-Energetics")+
-  ylab("OCR")+
+  ylab("logECAR")+
   facet_grid(. ~ variable ) +
   theme_bw()
 
@@ -560,8 +569,6 @@ l.bio.ECAR %>%
 
 
 # ECAR vs OCR
-
-BASAL ECAR vs BASAl OCAR
 
 ```{r echo=FALSE}
 basal.OCR <- n.bio %>% 
@@ -578,7 +585,7 @@ total <- merge(basal.ECAR, basal.OCR, by = "Sample", suffixes = c(".ECAR", ".OCR
 
 ggplot(total)+
   ggtitle("Basal.ECAR vs Basal.OCR")+
-  geom_point(aes(value.ECAR, value.OCR, col = Group.OCR))+
+  geom_point(aes(value.ECAR, value.OCR))+
   ylab("Basal OCR")+
   xlab("Basal ECAR")+
   theme_bw()
@@ -599,10 +606,24 @@ total_max <- merge(max.ECAR, max.OCR, by = "Sample", suffixes = c(".ECAR", ".OCR
 
 ggplot(total_max)+
   ggtitle("Max ECAR vs Max OCR")+
-  geom_point(aes(value.ECAR, value.OCR, color = Group.OCR))+
+  geom_point(aes(value.ECAR, value.OCR))+
   ylab("Max OCR")+
   xlab("Max ECAR")+
   theme_bw()
   
   
 ```
+
+# Stines test area. Must be deleted when pipeline is finished
+```{r}
+E %>% 
+  ggplot(aes(Interval,ECAR))+
+  ggtitle("ECAR Estimates natural scale")+
+  geom_boxplot( width = 0.6, outlier.size = -1, show.legend = FALSE, fill="pink", alpha = 0.7)+
+  # geom_line(aes(group = sample_id, Interval,mean), col = "grey", size = .1, show.legend = FALSE)+
+  geom_jitter( width = 0.2, show.legend = FALSE, size = 0.5 , alpha = 0.7)+
+  xlab("Intervals")+
+  ylab("logECAR")+
+  theme_bw()
+```
+

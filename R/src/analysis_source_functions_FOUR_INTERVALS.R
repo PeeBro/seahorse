@@ -183,8 +183,7 @@ read_xlsx_set <- function(path_, pattern_){
     d$LECAR <- log(d$ECAR)
     
     ### Add sample ID string Followed # sing in Group Column
-    d$Code <- sub(".*#","", d$Group)
-    d <- d %>% mutate(sample_id = paste0(Code, "-", Project, " | ", exper_date))
+    d <- d %>% mutate(sample_id = paste0(Project, " | ", exper_date))
     
     merged_d <- rbind(merged_d, d)
   }
@@ -241,7 +240,7 @@ idfy_sinleP_outlier <- function(DT, cut.point, x ) {
       ungroup()
 
     n_out_p <-  nrow(dm %>% filter(is.out.p == T))
-    cat(i, " Point outliares: ", n_out_p, "--", n_out_p/size*100 ,  "% \n")
+    cat(i, " Point outliers: ", n_out_p, "--", n_out_p/size*100 ,  "% \n")
 
     dm <- dm %>% filter(is.out.p == F)
     if( n_out_p == 0) keep <-F # Stop when no more outliars found
@@ -259,14 +258,14 @@ idfy_sinleP_outlier <- function(DT, cut.point, x ) {
     select(-c(contains("y"), "median_sqE", "mad_sqE", "sq_err", "int_mean", "x", "fitted"))
 
   # Print summary
-  cat("Total single point outliars: ", nrow(filter(dm_r, is.out.p == T))/size*100, "% \n" )
+  cat("Total single point outliers: ", nrow(filter(dm_r, is.out.p == T))/size*100, "% \n" )
 
   return(dm_r)
 }
 
 # ---------------------------------------------------------------------- IDENTIFY OUTLIARS
 # WELLS AND SINGLE POINT, COMBINED (Excluded from used Pipeline)
-idfy_outliar <- function(DT, x, cut.well, cut.point ){
+idfy_outlier <- function(DT, x, cut.well, cut.point ){
 
 
   dm <- DT
@@ -299,7 +298,7 @@ idfy_outliar <- function(DT, x, cut.well, cut.point ){
       ungroup()
     # Print
     n_out_w <-  nrow(dm %>% filter(is.out.w == TRUE))
-    cat(i, " Well outliares: ", n_out_w, "--", n_out_w/size*100 ,  "% \n")
+    cat(i, " Well outliers: ", n_out_w, "--", n_out_w/size*100 ,  "% \n")
 
     dm <- dm %>% filter(is.out.w == F)
     if( n_out_w == 0) keep <-FALSE # Stop when no more outliars found
@@ -335,7 +334,7 @@ idfy_outliar <- function(DT, x, cut.well, cut.point ){
       ungroup()
 
     n_out_p <-  nrow(dm %>% filter(is.out.p == T))
-    cat(i, " Point outliares: ", n_out_p, "--", n_out_p/size*100 ,  "% \n")
+    cat(i, " Point outliers: ", n_out_p, "--", n_out_p/size*100 ,  "% \n")
 
     dm <- dm %>% filter(is.out.p == F)
     if( n_out_p == 0) keep <-F # Stop when no more outliars found
@@ -352,8 +351,8 @@ idfy_outliar <- function(DT, x, cut.well, cut.point ){
     select(-c(contains("y"), "median_sqE", "mad_sqE", "sq_err", "int_mean"))
 
   # Print summary
-  cat("Total well outliars: ", nrow(filter(dm_r, is.out.w == T))/nrow(dm_r)*100, "% \n" )
-  cat("Total single point outliars: ", nrow(filter(dm_r, is.out.p == T))/nrow(dm_r)*100, "% \n" )
+  cat("Total well outliers: ", nrow(filter(dm_r, is.out.w == T))/nrow(dm_r)*100, "% \n" )
+  cat("Total single point outliers: ", nrow(filter(dm_r, is.out.p == T))/nrow(dm_r)*100, "% \n" )
 
   return(dm_r)
 }
