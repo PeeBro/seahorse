@@ -16,8 +16,9 @@ editor_options:
 # HOW TO USE
 
 Step 1: Make a new folder in the Data/INPUT folder and place your excel files there <br>
-Step 2: Write the name of the folder above. Use quotes like this "My_folder" <br>
-Step 3: Run the code chunk below <br>
+Step 2: Make sure that you have not opened any of the files in the folder <br>
+Step 3: Write the name of the folder above. Use quotes like this "My_folder" <br>
+Step 4: Run the code chunk below <br>
 
 
 
@@ -82,12 +83,13 @@ for (folder in knit_folders) {
 
 
 # Initialize the knitting process
-rmarkdown::render(here('Experiments', "OCR+ECAR-Pipeline-FOUR-INTERVALS.Rmd"), output_dir = OUTPUT_PATH)
+# rmarkdown::render(here('Experiments', "OCR+ECAR-Pipeline-FOUR-INTERVALS.Rmd"), output_dir = OUTPUT_PATH)
 ```
 
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, paged.print=FALSE}
 # Read The the separate xlsx files from folder, Specify entire path to folder. 
+source(here("R", "src", "analysis_source_functions_FOUR_INTERVALS.R"))
 data <- read_xlsx_set(INPUT_PATH, ".xlsx")  
 dm <- data$rates
 

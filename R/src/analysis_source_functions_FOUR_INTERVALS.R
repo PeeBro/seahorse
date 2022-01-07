@@ -92,15 +92,40 @@ read_xlsx_set <- function(path_, pattern_){
     #### Add plateID column
     d$plate_id <- rep(paste0(assay_name, " ", exper_date), times = nrow(d)) #? Why is this needed as repeats?
     
+    
+    # Read number of intervals + their length
+    intervals <- read_xlsx(x,
+                           sheet = "Assay Configuration", 
+                           range = "C47:F47", col_names = F)
+    
+    number_intervals <- length(intervals[!is.na(intervals)])
+    length_intervals <- as.integer(sub(".*: ", "", intervals))
+    
+    
+    # Get measurement length (Lines in excel file for each measurement. Used to load the data in "Read mmHg from raw data" )
+    i = 1400
+    while(TRUE){
+      raw <- read_xlsx(x,  sheet = "Raw", range = sprintf("A1:A%1.0f",i))
+      if(length(unique(raw$Measurement)) > 1) {
+        measurement_length <- max(table(raw$Measurement))
+        break
+      } else {
+        i = i + 500
+      }
+      
+    }
+    
+    
     #Read mmHg from raw data
-    raw <- read_xlsx(x,  sheet = "Raw", range = "A1:I3456") # reading only columns 1-9 and first 3 measurements
+    raw <- read_xlsx(x,  sheet = "Raw", range = sprintf("A1:I%1.0f",measurement_length*length_intervals[1]+1)) # reading only columns 1-9 and first 3 measurements
     # find wells where mmHg is out of range 140 - 160
     out_Hg <- raw %>%
-      arrange(Well) %>%
-      filter(Tick %in% c(0,12,24)) %>% #? wHAT IS TICK
+      group_by(Measurement) %>%
+      filter(Tick == min(Tick)) %>% # Extracts data with the smallest Tick value in each measurement
+      ungroup() %>% 
       group_by(Well) %>%
-      summarise(average_mmHg = mean(`O2 (mmHg)`),
-                out          = ifelse(average_mmHg > 160 | average_mmHg < 120, T, F )) %>%
+      summarise(average_mmHg = mean(`O2 (mmHg)`), # Calculates average Hg of the measurements (first tick of each) in interval 1 for each well
+                out          = ifelse(average_mmHg > 160 | average_mmHg < 140, T, F )) %>%
       filter(out == T)
     
     # remove Unassigned wells
