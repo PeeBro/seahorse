@@ -75,7 +75,8 @@ OUTPUT_PATH <- (here('Data', "OUTPUT", output_folder))
 # Delete old knit files
 knit_cache <- here('Experiments', "OCR+PER-Pipeline_cache")
 knit_files <- here("Data", "OUTPUT", output_folder, "OCR+PER-Pipeline_files")
-knit_folders <- c(knit_cache, knit_files)
+knit_figures <- here("Data", "OUTPUT", output_folder, "OCR+PER-Pipeline-FOUR-INTERVALS_files")
+knit_folders <- c(knit_cache, knit_files, knit_figures)
 for (folder in knit_folders) {
   if (file.exists(folder))
   unlink(folder, recursive = T)
@@ -83,11 +84,12 @@ for (folder in knit_folders) {
 
 
 # Initialize the knitting process
-# rmarkdown::render(here('Experiments', "OCR+PER-Pipeline-FOUR-INTERVALS.Rmd"), output_dir = OUTPUT_PATH)
+rmarkdown::render(here('Experiments', "OCR+PER-Pipeline-FOUR-INTERVALS.Rmd"), output_dir = OUTPUT_PATH)
 ```
 
+# Overview of data
 
-```{r, message=FALSE, warning=FALSE, echo=FALSE, paged.print=FALSE}
+```{r, message=TRUE, warning=FALSE, echo=FALSE, paged.print=FALSE}
 # Read The the separate xlsx files from folder, Specify entire path to folder. 
 source(here("R", "src", "analysis_source_functions_FOUR_INTERVALS.R"))
 data <- read_xlsx_set(INPUT_PATH, ".xlsx")  

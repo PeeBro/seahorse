@@ -1,5 +1,5 @@
 # ======================================= FUNCTIONS USED IN ANALYSIS
-# Author: Matej Stevuliak
+# Author: Matej Stevuliak $ Stine Østergaard
 
 # ------------------- BACKGROUND CORRECTION
 
@@ -95,6 +95,12 @@ read_xlsx_set <- function(path_, pattern_){
                                             sheet = "Assay Configuration", 
                                             range = "B23:B24",
                                             col_names = " ")[2,1]),1,10)
+    
+    exper_time <- toString(read_xlsx(x,  
+                                            sheet = "Assay Configuration", 
+                                            range = "B24:B24",
+                                            col_names = " "))
+    
     #### Add plateID column
     d$plate_id <- rep(paste0(assay_name, " ", exper_date), times = nrow(d)) #? Why is this needed as repeats?
     
@@ -102,12 +108,17 @@ read_xlsx_set <- function(path_, pattern_){
     # Read number of intervals + their length
     intervals <- read_xlsx(x,
                            sheet = "Assay Configuration", 
-                           range = "C47:F47", col_names = F)
+                           range = "C47:F47", col_names = c("1","2","3","4"))
     
     
     length_intervals <- as.integer(sub(".*: ", "", intervals))
     acc_length_intervals <- as.data.frame(cumsum(length_intervals))
     number_intervals <- length(length_intervals)
+    
+    message(sprintf("Name of assay: %s", assay_name), 
+            sprintf("\nNumber of intervals : %1.0f",number_intervals),
+            "\nLength of intervals : ", paste(length_intervals, collapse = ","))
+
     
     
     # Get measurement length (Lines in excel file for each measurement. Used to load the data in "Read mmHg from raw data" )
@@ -216,7 +227,7 @@ read_xlsx_set <- function(path_, pattern_){
     d$LPER <- log(d$PER)
     
     ### Add sample ID string Followed # sing in Group Column
-    d <- d %>% mutate(sample_id = paste0(Project, " | ", exper_date))
+    d <- d %>% mutate(sample_id = paste0(Project, " | ", exper_time))
     
     merged_d <- rbind(merged_d, d)
   }
