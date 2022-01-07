@@ -27,24 +27,24 @@ correct_background_OCR <- function(d){
   rm(background,d)
 }
 
-correct_background_ECAR <- function(d){
-# ECAR Normalizarion
+correct_background_PER <- function(d){
+# PER Normalizarion
   background <- d %>%
     filter(Group == "Background") %>%
     group_by(Measurement) %>%
-    mutate( Z_mod = abs((ECAR - median(ECAR))/mad(ECAR)))
+    mutate( Z_mod = abs((PER - median(PER))/mad(PER)))
 
 
   out        <- background %>% filter(Z_mod > 3.26)
   background <- background %>%
     filter(Z_mod < 3.26) %>%
-    mutate(Mean_to_substr = mean(ECAR)) # take mean to substract
+    mutate(Mean_to_substr = mean(PER)) # take mean to substract
 
   background <- background[!duplicated(background[,"Mean_to_substr"]),] # reduce the data before joining them
 
   d <- d %>%
     left_join(background, by = "Measurement", suffix  = c("",".y") ) %>%
-    mutate(ECAR = ECAR - Mean_to_substr ) %>%
+    mutate(PER = PER - Mean_to_substr ) %>%
     select(-c(contains("y"),"Z_mod", "Mean_to_substr"))
 
   return(list(data = d, removed = out))
@@ -71,7 +71,7 @@ read_xlsx_set <- function(path_, pattern_){
   files    <- list.files(path=path_, pattern=pattern_, full.names=TRUE, recursive=FALSE)
   merged_d <- data_frame()
   Hg_out   <- data_frame()
-  ECAR_background_out <- data_frame()
+  PER_background_out <- data_frame()
   OCR_background_out  <- data_frame()
   
   # for every file create a data frame and merge into one
@@ -131,22 +131,22 @@ read_xlsx_set <- function(path_, pattern_){
     # remove Unassigned wells
     d <- d %>%filter(Group != "Unassigned")
     
-    #### remove Background from OCR  and ECAR ####
+    #### remove Background from OCR  and PER ####
     is_norm_OCR  <- mean(filter(d, Group == "Background")$OCR) == 0
-    is_norm_ECAR <- mean(filter(d, Group == "Background")$ECAR) == 0
-    if (is_norm_OCR & is_norm_ECAR) {
+    is_norm_PER <- mean(filter(d, Group == "Background")$PER) == 0
+    if (is_norm_OCR & is_norm_PER) {
       d <- d %>% filter(Group != "Background")
     } else {
-      corr <- correct_background_ECAR(d)
+      corr <- correct_background_PER(d)
       d    <- corr$data
       out  <- corr$removed
       # to report which measurements were removed
-      removed_ECAR_background <- data_frame(
+      removed_PER_background <- data_frame(
         Plate = unique(d$plate_id),
         N_out = nrow(out),
         Wells = paste0(unique(out$Well), collapse = " "),
         Measurement = paste0(out$Measurement, collapse = " "))
-      ECAR_background_out <- rbind(ECAR_background_out, removed_ECAR_background)
+      PER_background_out <- rbind(PER_background_out, removed_PER_background)
       #OCR
       corr <- correct_background_OCR(d)
       d    <- corr$data
@@ -163,17 +163,17 @@ read_xlsx_set <- function(path_, pattern_){
         drop_na()
     }
     
-    # Remove samples where OCR or ECAR is 0
+    # Remove samples where OCR or PER is 0
 
-    out <- d %>% filter(OCR == 0 | ECAR == 0)
+    out <- d %>% filter(OCR == 0 | PER == 0)
     
-    zero_OCR_ECAR <- data_frame(
+    zero_OCR_PER <- data_frame(
       Plate = unique(out$plate_id),
       N_out = nrow(out),
       Wells = paste0(unique(out$Well), collapse = " "),
       Measurement = paste0(out$Measurement, collapse = " "))
     
-    d <- d %>%filter(!(OCR == 0 | ECAR == 0))
+    d <- d %>%filter(!(OCR == 0 | PER == 0))
     
     
     # Filter out whole wells where average of first ticks from first three measurements
@@ -203,9 +203,9 @@ read_xlsx_set <- function(path_, pattern_){
     # the entries with blanks should be filtered, Must be here !
     d <- d %>%filter(!is.na(Protocol))
     
-    ### Add log OCR,  log ECAR
+    ### Add log OCR,  log PER
     d$LOCR  <- log(d$OCR)
-    d$LECAR <- log(d$ECAR)
+    d$LPER <- log(d$PER)
     
     ### Add sample ID string Followed # sing in Group Column
     d <- d %>% mutate(sample_id = paste0(Project, " | ", exper_date))
@@ -214,7 +214,7 @@ read_xlsx_set <- function(path_, pattern_){
   }
   
   
-  return(list(rates = merged_d, Hg_list = Hg_out, ECAR_background = ECAR_background_out, OCR_background = OCR_background_out, Zero_measurements = zero_OCR_ECAR))
+  return(list(rates = merged_d, Hg_list = Hg_out, PER_background = PER_background_out, OCR_background = OCR_background_out, Zero_measurements = zero_OCR_PER))
 }
 # -------------------------------------------------------------- IDENTIFY SINGLE POINT OUTLIARS
 # USED IN WORKING PIPELINE
@@ -224,7 +224,7 @@ idfy_sinleP_outlier <- function(DT, cut.point, x ) {
   # IN:
   # DT        = Seahorse data produced by read_xlsx_set() function
   # cut.point = Treashold for outier removal
-  # x         = Varible used, one of: "OCR", "LOCR", "ECAR", "LECAR"
+  # x         = Varible used, one of: "OCR", "LOCR", "PER", "LPER"
   # OUT: list containing data
   # dm_r      = data with boolean col. is.out.p
 
@@ -451,42 +451,38 @@ compute_bioenergetics_ <- function(dm_r, method) {
       select(c("Sample", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Spare.Resp.Cpcty",
                "log.Maximal.Resp", "log.Non.Mito.Resp"))
 
-  } else if (method == "ECAR") {
+  } else if (method == "PER") {
     bio_e <- estimates %>%
       mutate(Sample            = sample_id,
-             Basal.Glyco       = Int2 - Int4,
-             Max.Glyco.Cpcty   = Int3 - Int4,
-             Glyco.Rsrv.Cpcty  = Int3 - Int2,
-             Non.Glyco.Acid.   = Int4) %>%
-      select(c("Sample", "Basal.Glyco", "Max.Glyco.Cpcty", "Glyco.Rsrv.Cpcty", "Non.Glyco.Acid."))
+             Basal.PER         = Int1,
+             Max.PER           = Int2,
+             Glyco.Rsrv.Cpcty  = Int2 - Int1) %>%
+      select(c("Sample", "Basal.PER", "Max.PER", "Glyco.Rsrv.Cpcty"))
 
     # standard errors of mean differences
     sd_n   <- cbind(sd = deviations, n = numbers)
     st_errors <- sd_n %>%
       mutate(Sample            = sd.sample_id,
-             Basal.Glyco       = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
-             Max.Glyco.Cpcty   = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int4^2)/n.Int4)),
-             Glyco.Rsrv.Cpcty  = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int2^2)/n.Int2)),
-             Non.Glyco.Acid.   = sd.Int4/sqrt(n.Int4)) %>%
-      select(c("Sample", "Basal.Glyco", "Max.Glyco.Cpcty", "Glyco.Rsrv.Cpcty", "Non.Glyco.Acid."))
-  } else if (method == "LECAR") {
+             Basal.PER         = sqrt(((sd.Int1^2)/n.Int1)),
+             Max.PER           = sqrt(((sd.Int2^2)/n.Int2)),
+             Glyco.Rsrv.Cpcty  = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int1^2)/n.Int1))) %>%
+      select(c("Sample", "Basal.PER", "Max.PER", "Glyco.Rsrv.Cpcty"))
+  } else if (method == "LPER") {
     bio_e <- estimates %>%
-      mutate(Sample            = sample_id,
-             log.Basal.Glyco       = Int2 - Int4,
-             log.Max.Glyco.Cpcty   = Int3 - Int4,
-             log.Glyco.Rsrv.Cpcty  = Int3 - Int2,
-             log.Non.Glyco.Acid.   = Int4) %>%
-      select(c("Sample", "log.Basal.Glyco", "log.Max.Glyco.Cpcty", "log.Glyco.Rsrv.Cpcty", "log.Non.Glyco.Acid."))
+      mutate(Sample                = sample_id,
+             log.Basal.PER         = Int1,
+             log.Max.PER           = Int2,
+             log.Glyco.Rsrv.Cpcty  = Int2 - Int1) %>%
+      select(c("Sample", "log.Basal.PER", "log.Max.PER", "log.Glyco.Rsrv.Cpcty"))
 
     # standard errors of mean differences
     sd_n   <- cbind(sd = deviations, n = numbers)
     st_errors <- sd_n %>%
       mutate(Sample                = sd.sample_id,
-             log.Basal.Glyco       = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
-             log.Max.Glyco.Cpcty   = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int4^2)/n.Int4)),
-             log.Glyco.Rsrv.Cpcty  = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int2^2)/n.Int2)),
-             log.Non.Glyco.Acid.   = sd.Int4/sqrt(n.Int4)) %>%
-      select(c("Sample", "log.Basal.Glyco", "log.Max.Glyco.Cpcty", "log.Glyco.Rsrv.Cpcty", "log.Non.Glyco.Acid."))
+             log.Basal.PER         = sqrt(((sd.Int1^2)/n.Int1)),
+             log.Max.PER           = sqrt(((sd.Int2^2)/n.Int2)),
+             log.Glyco.Rsrv.Cpcty  = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int1^2)/n.Int1))) %>%
+      select(c("Sample", "log.Basal.PER", "log.Max.PER", "log.Glyco.Rsrv.Cpcty"))
 
   }
   return(list(bioenergetics = bio_e, standard.errors = st_errors, estimates = estim_mean ))

@@ -1,5 +1,5 @@
 ---
-title: "OCR+ECAR-Pipeline-FOUR-INTERVALS"
+title: "OCR+PER-Pipeline-FOUR-INTERVALS"
 output: 
   html_document:
     number_sections: true
@@ -25,7 +25,7 @@ Step 4: Run the code chunk below <br>
 ```{r eval = FALSE, include=FALSE}
 # Set path and load the package "here"
 
-here::i_am("Experiments/OCR+ECAR-Pipeline.Rmd")
+here::i_am("Experiments/OCR+PER-Pipeline.Rmd")
 
 if(!("here" %in% installed.packages()[, "Package"])) {
   install.packages("here")
@@ -73,8 +73,8 @@ OUTPUT_PATH <- (here('Data', "OUTPUT", output_folder))
 
 
 # Delete old knit files
-knit_cache <- here('Experiments', "OCR+ECAR-Pipeline_cache")
-knit_files <- here("Data", "OUTPUT", output_folder, "OCR+ECAR-Pipeline_files")
+knit_cache <- here('Experiments', "OCR+PER-Pipeline_cache")
+knit_files <- here("Data", "OUTPUT", output_folder, "OCR+PER-Pipeline_files")
 knit_folders <- c(knit_cache, knit_files)
 for (folder in knit_folders) {
   if (file.exists(folder))
@@ -83,11 +83,11 @@ for (folder in knit_folders) {
 
 
 # Initialize the knitting process
-# rmarkdown::render(here('Experiments', "OCR+ECAR-Pipeline-FOUR-INTERVALS.Rmd"), output_dir = OUTPUT_PATH)
+rmarkdown::render(here('Experiments', "OCR+PER-Pipeline-FOUR-INTERVALS.Rmd"), output_dir = OUTPUT_PATH)
 ```
 
 
-```{r message=FALSE, warning=FALSE, echo=FALSE, paged.print=FALSE}
+```{r, message=FALSE, warning=FALSE, echo=FALSE, paged.print=FALSE}
 # Read The the separate xlsx files from folder, Specify entire path to folder. 
 source(here("R", "src", "analysis_source_functions_FOUR_INTERVALS.R"))
 data <- read_xlsx_set(INPUT_PATH, ".xlsx")  
@@ -112,15 +112,15 @@ data$OCR_background %>%
 ```
 
 ```{r echo=FALSE}
-data$ECAR_background %>%  
-  kable(caption="Background measurements not included in ECAR correction") %>% 
+data$PER_background %>%  
+  kable(caption="Background measurements not included in PER correction") %>% 
   kable_styling()
 
 ```
 
 ```{r echo=FALSE}
 data$Zero_measurements %>%  
-  kable(caption="Background measurements not included in ECAR correction") %>% 
+  kable(caption="Empty measurements") %>% 
   kable_styling()
 
 ```
@@ -373,32 +373,33 @@ l.bio %>%
 ```
 
 
-# ECAR
+# PER
 
 ## Filter out irrelevant samples 
 
 ```{r echo=FALSE}
-# perep for ECAR interval 1 not used  
-d_ECAR <- dm %>% filter(!Interval %in% c("Int1"))
+# perep for PER interval 1 not used  
+d_PER <- dm %>% filter(!Interval %in% c("Int3", "Int4"))
                         
 # filter out samples with any of intervals having less than 8 measurements 
-sumar <- d_ECAR %>%
+sumar <- d_PER %>%
   group_by(sample_id, Interval) %>% 
   summarise(n = n()) %>% 
-  filter(n < 8 | Interval == "Int2" & n < 18 | Interval == "Int3" & n < 18 |Interval == "Int4" & n < 12 )
-# number of intervals has to be 3 or discarted 
-inter <- d_ECAR %>% 
+  filter(n < 8 | Interval == "Int1" & n < 18 | Interval == "Int2" & n < 18)
+
+# number of intervals has to be 2 or discarted 
+inter <- d_PER %>% 
   group_by(sample_id) %>% 
   summarise(n_inter = length(unique(Interval))) %>% 
-  filter(n_inter != 3)
+  filter(n_inter != 2)
 
-d_ECAR <- d_ECAR %>% 
+d_PER <- d_PER %>% 
   filter(! sample_id %in% unique(sumar$sample_id)) %>% 
   filter(! sample_id %in% unique(inter$sample_id))
 
 paste0("Samples removed due lack of usable measurements(less than 8  in any interval)")
 unique(sumar$sample_id)
-paste0("Samples removed because don't have 3 Intervals")
+paste0("Samples removed because it does not have 2 Intervals")
 unique(inter$sample_id)
 ```
 
@@ -408,17 +409,17 @@ unique(inter$sample_id)
 # DT = loaded dataframe 
 # cut.well = threshold for well outliaer, 
 # cut.point = threshold for point outliaer
-# x = Variable: "LOCR" or "OCR" or "ECAR"
+# x = Variable: "LOCR" or "OCR" or "PER"
 
-dr_ecar <- idfy_sinleP_outlier(DT = d_ECAR, cut.point = 5, x = "ECAR" )  # could Print arguments
+dr_per <- idfy_sinleP_outlier(DT = d_PER, cut.point = 5, x = "PER" )  # could Print arguments
 # write the data into file 
-write_csv(dr_ecar, paste0(OUTPUT_PATH,"/Data_removed_ECAR.csv"))  
+write_csv(dr_per, paste0(OUTPUT_PATH,"/Data_removed_PER.csv"))  
 ```
 
 ```{r echo=FALSE, warning=FALSE, echo=FALSE}
 #TO DO: convert graph to aditive add legends 
 #TO DO: convert graph to aditive add legends 
-dr_ecar %>% 
+dr_per %>% 
   group_by(sample_id, is.out.p) %>% 
   summarise(n = n()) %>% 
   group_by(sample_id) %>% 
@@ -436,11 +437,11 @@ dr_ecar %>%
 
 ## Print schemes of removed points for all samples
 ```{r echo=FALSE}
-for (smpl in unique(dr_ecar$sample_id)) {
-  plot <- ggplot(filter(dr_ecar, sample_id == smpl), aes(Measurement, ECAR))+
+for (smpl in unique(dr_per$sample_id)) {
+  plot <- ggplot(filter(dr_per, sample_id == smpl), aes(Measurement, PER))+
             ggtitle(paste0("SAMPLE:  ", smpl))+
             geom_line(aes(group = Well),size = 0.2, color = "grey") +
-            geom_point(aes(Measurement, ECAR, color = is.out.p))+
+            geom_point(aes(Measurement, PER, color = is.out.p))+
             guides(color=guide_legend(title="Outlier"))+
             xlab("Measurement")
   
@@ -451,38 +452,38 @@ for (smpl in unique(dr_ecar$sample_id)) {
 ## Bioenergetics and Estimates 
 
 ```{r echo=FALSE}
-norm.be.ECAR <- compute_bioenergetics_(dr_ecar, "ECAR") 
-log.be.ECAR  <- compute_bioenergetics_(dr_ecar, "LECAR") 
+norm.be.PER <- compute_bioenergetics_(dr_per, "PER") 
+log.be.PER  <- compute_bioenergetics_(dr_per, "LPER") 
 
-write_csv(norm.be.ECAR$estimates, paste0(OUTPUT_PATH,"/ECAR-Estimated_values.csv"))
-write_csv(log.be.ECAR$estimates, paste0(OUTPUT_PATH,"/LECAR-Estimated_values.csv"))
-write_csv(norm.be.ECAR$bioenergetics, paste0(OUTPUT_PATH,"/ECAR-BE-table.csv"))
-write_csv(log.be.ECAR$bioenergetics, paste0(OUTPUT_PATH,"/LECAR-BE-table.csv"))
+write_csv(norm.be.PER$estimates, paste0(OUTPUT_PATH,"/PER-Estimated_values.csv"))
+write_csv(log.be.PER$estimates, paste0(OUTPUT_PATH,"/LPER-Estimated_values.csv"))
+write_csv(norm.be.PER$bioenergetics, paste0(OUTPUT_PATH,"/PER-BE-table.csv"))
+write_csv(log.be.PER$bioenergetics, paste0(OUTPUT_PATH,"/LPER-BE-table.csv"))
 ```
 ### Estimates
 
 ```{r echo=FALSE}
 
 # norm estimates boxplots
-norm.be.ECAR$estimates %>% 
+norm.be.PER$estimates %>% 
   ggplot(aes(Interval,mean))+
-  ggtitle("ECAR Estimates natural scale")+
+  ggtitle("PER Estimates natural scale")+
   geom_boxplot( width = 0.6, outlier.size = -1, show.legend = FALSE, fill="pink", alpha = 0.7)+
   # geom_line(aes(group = sample_id, Interval,mean), col = "grey", size = .1, show.legend = FALSE)+
   geom_jitter( width = 0.2, show.legend = FALSE, size = 0.5 , alpha = 0.7)+
   xlab("Intervals")+
-  ylab("logECAR")+
+  ylab("logPER")+
   theme_bw()
 
 # log estimates boxplots
-log.be.ECAR$estimates %>%   
+log.be.PER$estimates %>%   
   ggplot(aes(Interval,mean))+
-  ggtitle("Log ECAR Estimates")+
+  ggtitle("Log PER Estimates")+
   geom_boxplot(width = 0.6, outlier.size = -1, show.legend = FALSE, fill="pink", alpha = 0.7)+
   # geom_line(aes(group = sample_id, Interval,mean), col = "grey", size = .1, show.legend = FALSE)+
   geom_jitter(width = 0.2, show.legend = FALSE, size = 0.5 )+
   xlab("Intervals")+
-  ylab("logECAR")+
+  ylab("logPER")+
   theme_bw() 
   
   
@@ -497,11 +498,11 @@ log.be.ECAR$estimates %>%
 # ADD coefficients of variation
 # normal scale Bioenergetics 
 
-n.bio.ECAR <- melt(norm.be.ECAR$bioenergetics)
-n.bio.ECAR %>% 
+n.bio.PER <- melt(norm.be.PER$bioenergetics)
+n.bio.PER %>% 
   filter(variable != "Other") %>% 
   ggplot(aes(variable, value, fill = variable ))+
-  ggtitle("Difference based natural scale Bio-Energetics ECAR")+
+  ggtitle("Difference based natural scale Bio-Energetics PER")+
   geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
   geom_jitter(width = 0.1, show.legend = FALSE, size = 0.5 )+
   xlab("Bio-Energetics")+
@@ -510,11 +511,11 @@ n.bio.ECAR %>%
 
 
 # log scale Bioenergetics 
-l.bio.ECAR   <- melt(log.be.ECAR$bioenergetics )
-l.bio.ECAR %>% 
+l.bio.PER   <- melt(log.be.PER$bioenergetics )
+l.bio.PER %>% 
   filter(variable != "Other") %>% 
   ggplot(aes(variable, value, fill = variable ))+
-  ggtitle("Difference based log scale Bio-Energetics ECAR")+
+  ggtitle("Difference based log scale Bio-Energetics PER")+
   geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
   geom_jitter(width = 0.1, show.legend = FALSE, size = 0.5 )+
   xlab("Bio-Energetics")+
@@ -524,15 +525,15 @@ l.bio.ECAR %>%
 
 
 # add standard errors
-# st.err <- melt(norm.be.ECAR$standard.errors, value.name = "SE", variable.name = "Bio.e" )
-# be.er  <- left_join(n.bio.ECAR, st.err, by = c("Sample", "variable"))
+# st.err <- melt(norm.be.PER$standard.errors, value.name = "SE", variable.name = "Bio.e" )
+# be.er  <- left_join(n.bio.PER, st.err, by = c("Sample", "variable"))
 # be.er  <- arrange(be.er, Sample)
-write_csv(n.bio.ECAR, paste0(OUTPUT_PATH,"/ECAR-BioEnergetics.csv"))
+write_csv(n.bio.PER, paste0(OUTPUT_PATH,"/PER-BioEnergetics.csv"))
 # add standard errors
 # st.err <- melt(log.be$standard.errors, value.name = "SE", variable.name = "variable" )
-# be.er  <- left_join(l.bio.ECAR, st.err, by = c("Sample", "variable"))  
+# be.er  <- left_join(l.bio.PER, st.err, by = c("Sample", "variable"))  
 # be.er <- arrange(be.er, Sample)
-write_csv(l.bio.ECAR, paste0(OUTPUT_PATH,"/logECAR-BioEnergetics.csv"))
+write_csv(l.bio.PER, paste0(OUTPUT_PATH,"/logPER-BioEnergetics.csv"))
 
 
 
@@ -543,26 +544,26 @@ write_csv(l.bio.ECAR, paste0(OUTPUT_PATH,"/logECAR-BioEnergetics.csv"))
 
 ```{r echo=FALSE, fig.width=8}
 # difference based BE
-n.bio.ECAR %>% 
+n.bio.PER %>% 
   mutate(Group = ifelse(grepl("A", Sample), "A", "B")) %>% 
   ggplot(aes(Group, value, fill = variable))+
-  ggtitle("ECAR Normal scale Bio-Energetics biological groups ")+
+  ggtitle("PER Normal scale Bio-Energetics biological groups ")+
   geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
   geom_jitter(width = 0.1, show.legend = FALSE, size = 0.5)+
   xlab("Bio-Energetics")+
-  ylab("ECAR")+
+  ylab("PER")+
   facet_grid(. ~ variable ) +
   theme_bw()
 
 # ratio based BE
-l.bio.ECAR %>% 
+l.bio.PER %>% 
   mutate(Group = ifelse(grepl("A", Sample), "A", "B")) %>% 
   ggplot(aes(Group, value, fill = variable))+
-  ggtitle("ECAR Log scale Bio-Energetics biological groups ")+
+  ggtitle("PER Log scale Bio-Energetics biological groups ")+
   geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
   geom_jitter(width = 0.1, show.legend = FALSE, size = 0.5)+
   xlab("Bio-Energetics")+
-  ylab("logECAR")+
+  ylab("logPER")+
   facet_grid(. ~ variable ) +
   theme_bw()
 
@@ -570,26 +571,26 @@ l.bio.ECAR %>%
 ```
 
 
-# ECAR vs OCR
+# PER vs OCR
 
 ```{r echo=FALSE}
 basal.OCR <- n.bio %>% 
   filter(variable == "Basal.Resp") %>% 
   mutate(Group = ifelse(grepl("A", Sample), "A", "B"))
-basal.ECAR <- n.bio.ECAR %>% 
-  filter(variable == "Basal.Glyco") %>% 
+basal.PER <- n.bio.PER %>% 
+  filter(variable == "Basal.PER") %>% 
   mutate(Group = ifelse(grepl("A", Sample), "A", "B"))
 
-total <- merge(basal.ECAR, basal.OCR, by = "Sample", suffixes = c(".ECAR", ".OCR"))
+total <- merge(basal.PER, basal.OCR, by = "Sample", suffixes = c(".PER", ".OCR"))
 
 # total <- total %>% 
 #   mutate(Group = ifelse(grepl("B", Sample), "Post", "Pre"))
 
 ggplot(total)+
-  ggtitle("Basal.ECAR vs Basal.OCR")+
-  geom_point(aes(value.ECAR, value.OCR))+
+  ggtitle("Basal.PER vs Basal.OCR")+
+  geom_point(aes(value.PER, value.OCR))+
   ylab("Basal OCR")+
-  xlab("Basal ECAR")+
+  xlab("Basal PER")+
   theme_bw()
   
   
@@ -598,34 +599,34 @@ ggplot(total)+
 ```{r echo=FALSE}
 max.OCR   <- n.bio %>% filter(variable == "Maximal.Resp") %>% 
   mutate(Group = ifelse(grepl("A", Sample), "A", "B"))
-max.ECAR <- n.bio.ECAR %>% filter(variable == "Max.Glyco.Cpcty") %>% 
+max.PER <- n.bio.PER %>% filter(variable == "Max.PER") %>% 
   mutate(Group = ifelse(grepl("A", Sample), "A", "B"))
 
-total_max <- merge(max.ECAR, max.OCR, by = "Sample", suffixes = c(".ECAR", ".OCR"))
+total_max <- merge(max.PER, max.OCR, by = "Sample", suffixes = c(".PER", ".OCR"))
 
 # total <- total %>% 
 #   mutate(Group = ifelse(grepl("B", Sample), "Post", "Pre"))
 
 ggplot(total_max)+
-  ggtitle("Max ECAR vs Max OCR")+
-  geom_point(aes(value.ECAR, value.OCR))+
+  ggtitle("Max PER vs Max OCR")+
+  geom_point(aes(value.PER, value.OCR))+
   ylab("Max OCR")+
-  xlab("Max ECAR")+
+  xlab("Max PER")+
   theme_bw()
   
   
 ```
 
 # Stines test area. Must be deleted when pipeline is finished
-```{r}
-E %>% 
-  ggplot(aes(Interval,ECAR))+
-  ggtitle("ECAR Estimates natural scale")+
-  geom_boxplot( width = 0.6, outlier.size = -1, show.legend = FALSE, fill="pink", alpha = 0.7)+
-  # geom_line(aes(group = sample_id, Interval,mean), col = "grey", size = .1, show.legend = FALSE)+
-  geom_jitter( width = 0.2, show.legend = FALSE, size = 0.5 , alpha = 0.7)+
-  xlab("Intervals")+
-  ylab("logECAR")+
-  theme_bw()
-```
+<!-- # ```{r} -->
+<!-- # E %>% -->
+<!-- #   ggplot(aes(Interval,PER))+ -->
+<!-- #   ggtitle("PER Estimates natural scale")+ -->
+<!-- #   geom_boxplot( width = 0.6, outlier.size = -1, show.legend = FALSE, fill="pink", alpha = 0.7)+ -->
+<!-- #   # geom_line(aes(group = sample_id, Interval,mean), col = "grey", size = .1, show.legend = FALSE)+ -->
+<!-- #   geom_jitter( width = 0.2, show.legend = FALSE, size = 0.5 , alpha = 0.7)+ -->
+<!-- #   xlab("Intervals")+ -->
+<!-- #   ylab("logPER")+ -->
+<!-- #   theme_bw() -->
+<!-- # ``` -->
 
