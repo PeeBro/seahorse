@@ -53,14 +53,20 @@ correct_background_PER <- function(d){
 
 # --------------------------------------------------------------------------------------CONSTRUCT DATA
 get_intervals <- function(x, y){
-  # Identifies Interval form measurement time  and Protocol info. Used with mapply
-  # INPUT x = Measurement, y = Protocol
+  # Identifies Interval from measurement and accumulated sum of number of measurements in each interval. Used with mapply
+  # INPUT x = Measurement, y = accumulated sum of number of measurements in each interval
   # OUTPUT = Interval
-  return( ifelse(y == "Back", "Back",
-          ifelse(as.character(x) %in% c("1", "2", "3", "4"), "Int1",
-          ifelse(as.character(x) %in% c("5", "6", "7"), "Int2",
-          ifelse(as.character(x) %in% c("8", "9", "10"), "Int3",
-          ifelse(as.character(x) %in% c("11", "12", "13"), "Int4", "Other" ))))))
+  interval = 1
+  for(i in y){ # Iterate through all the intervals. i is now the value of the max measurement of the interval of each round of this for-loop.
+    
+    if(x <= i){
+      return(sprintf("Int%1.0f", interval)) #If The measurement is smaller than the largest measurement number of the interval, assign that measurement to that interval
+      
+    }else{
+      interval = interval + 1 # Otherwise go to next interval. (simplified explanation)
+    }
+  }
+  return("Other")
 }
 
 read_xlsx_set <- function(path_, pattern_){
@@ -98,8 +104,10 @@ read_xlsx_set <- function(path_, pattern_){
                            sheet = "Assay Configuration", 
                            range = "C47:F47", col_names = F)
     
-    number_intervals <- length(intervals[!is.na(intervals)])
+    
     length_intervals <- as.integer(sub(".*: ", "", intervals))
+    acc_length_intervals <- as.data.frame(cumsum(length_intervals))
+    number_intervals <- length(length_intervals)
     
     
     # Get measurement length (Lines in excel file for each measurement. Used to load the data in "Read mmHg from raw data" )
@@ -194,7 +202,7 @@ read_xlsx_set <- function(path_, pattern_){
     ### add project column
     d$Project  <- sub("#.*", "", sub(".*-","", d$Group))
     ### Add interval column
-    d$Interval <- mapply(get_intervals, d$Measurement, d$Protocol)
+    d$Interval <- mapply(get_intervals, d$Measurement, y = acc_length_intervals)
     
     ### Add column with time on experiment scale
     d <- d %>% mutate(Time = ifelse(Interval == "Int1" | Interval == "Int2", Measurement,
