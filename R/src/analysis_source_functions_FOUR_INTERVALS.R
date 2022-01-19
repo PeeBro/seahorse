@@ -1,5 +1,5 @@
 # ======================================= FUNCTIONS USED IN ANALYSIS
-# Author: Matej Stevuliak $ Stine Østergaard
+# Author: Matej Stevuliak and Stine Østergaard
 
 # ------------------- BACKGROUND CORRECTION
 
@@ -121,7 +121,7 @@ read_xlsx_set <- function(path_, pattern_){
 
     
     
-    # Get measurement length (Lines in excel file for each measurement. Used to load the data in "Read mmHg from raw data" )
+    # Get measurement length (How many lines does each measurement have?. Used to load the data in "Read mmHg from raw data" )
     i = 1400
     while(TRUE){
       raw <- read_xlsx(x,  sheet = "Raw", range = sprintf("A1:A%1.0f",i))

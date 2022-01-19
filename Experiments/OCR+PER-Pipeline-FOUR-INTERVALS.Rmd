@@ -101,7 +101,7 @@ dm <- data$rates
 
 ```{r echo=FALSE}
 data$Hg_list %>%  
-  kable(caption="Wells removed. Out od 140-160 mmHg interval") %>% 
+  kable(caption="Wells removed. Out of 140-160 mmHg interval") %>% 
   kable_styling()
 
 ```
