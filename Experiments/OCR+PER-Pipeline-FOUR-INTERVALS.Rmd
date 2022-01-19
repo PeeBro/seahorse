@@ -73,7 +73,8 @@ OUTPUT_PATH <- (here('Data', "OUTPUT", output_folder))
 
 
 # Delete old knit files
-knit_cache <- here('Experiments', "OCR+PER-Pipeline_cache")
+name_of_cache <- list.files(path = "./Experiments", pattern = "cache", include.dirs = TRUE) # Finds the correct folder by it self. Deletes ALL cache folders.
+knit_cache <- here('Experiments', name_of_cache)
 knit_files <- here("Data", "OUTPUT", output_folder, "OCR+PER-Pipeline_files")
 knit_figures <- here("Data", "OUTPUT", output_folder, "OCR+PER-Pipeline-FOUR-INTERVALS_files")
 knit_folders <- c(knit_cache, knit_files, knit_figures)
