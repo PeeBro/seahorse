@@ -4,7 +4,7 @@ output:
   html_document:
     number_sections: true
 params:
-  input_folder: "4_intervals"
+  input_folder: "4_intervals_test"
 editor_options: 
   chunk_output_type: console
 ---
@@ -205,7 +205,7 @@ for (smpl in unique(dr_ocr$sample_id)) {
             geom_point(aes(Time, OCR, color = is.out.p))+
             guides(color=guide_legend(title="Outlier"))+
             xlab("Measurement")+
-            ylim(0,15)+
+            # ylim(0,15)+
             ylab("OCR (Normalized)")
 
   print(plot +theme_bw())
@@ -440,13 +440,17 @@ dr_per %>%
 
 ## Print schemes of removed points for all samples
 ```{r echo=FALSE}
+ylim_low <- min(dr_per$PER)-50
+ylim_high <- max(dr_per$PER)
 for (smpl in unique(dr_per$sample_id)) {
   plot <- ggplot(filter(dr_per, sample_id == smpl), aes(Measurement, PER))+
             ggtitle(paste0("SAMPLE:  ", smpl))+
             geom_line(aes(group = Well),size = 0.2, color = "grey") +
             geom_point(aes(Measurement, PER, color = is.out.p))+
             guides(color=guide_legend(title="Outlier"))+
-            xlab("Measurement")
+            xlab("Measurement")+
+            ylim(ylim_low,ylim_high)+
+            NULL
   
   print(plot +theme_bw())
 }

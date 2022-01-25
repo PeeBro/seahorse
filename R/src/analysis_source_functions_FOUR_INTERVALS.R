@@ -84,7 +84,7 @@ read_xlsx_set <- function(path_, pattern_){
   for (x in files) {
     # --------- READ DATA --------- #
     # Read rates
-    d <- read_xlsx(x,  sheet = "Normalized Rate")
+    d <- read_xlsx(x,  sheet = "Rate")
     
     # Read assay configuration
     assay_name <- toString( read_xlsx(x,  
