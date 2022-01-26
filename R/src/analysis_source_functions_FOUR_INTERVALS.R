@@ -80,6 +80,8 @@ read_xlsx_set <- function(path_, pattern_){
   Hg_out   <- data_frame()
   PER_background_out <- data_frame()
   OCR_background_out  <- data_frame()
+  Empty_out <- data_frame()
+  Bad_cells_out <- data_frame()
   
   # for every file create a data frame and merge into one
   for (x in files) {
@@ -183,8 +185,8 @@ read_xlsx_set <- function(path_, pattern_){
         drop_na()
     }
     
-    # Remove samples where OCR or PER is 0
-
+    
+    # Remove wells where OCR or PER is 0
     out <- d %>% filter(OCR == 0 | PER == 0)
     
     zero_OCR_PER <- data_frame(
@@ -194,6 +196,22 @@ read_xlsx_set <- function(path_, pattern_){
       Measurement = paste0(out$Measurement, collapse = " "))
     
     d <- d %>%filter(!(OCR == 0 | PER == 0))
+    Empty_out<- rbind(Empty_out, zero_OCR_PER)
+    
+
+    # Remove wells where OCR < 10 in the first interval
+    out <- d %>% filter(Measurement <= acc_length_intervals[1,1]) %>% 
+                 filter(OCR <= 10)
+    
+    less_than_10_OCR <- data_frame(
+      Plate = unique(out$plate_id),
+      N_out = nrow(out),
+      Wells = paste0(unique(out$Well), collapse = " "),
+      Measurement = paste0(out$Measurement, collapse = " "))
+    
+    d <- d %>% filter(!Well %in% out$Well)
+    Bad_cells_out <- rbind(Bad_cells_out, less_than_10_OCR)
+        
     
     
     # Filter out whole wells where average of first ticks from first three measurements
@@ -234,7 +252,7 @@ read_xlsx_set <- function(path_, pattern_){
   }
   
   
-  return(list(rates = merged_d, Hg_list = Hg_out, PER_background = PER_background_out, OCR_background = OCR_background_out, Zero_measurements = zero_OCR_PER))
+  return(list(rates = merged_d, Hg_list = Hg_out, PER_background = PER_background_out, OCR_background = OCR_background_out, Zero_measurements = Empty_out, Bad_Cells = Bad_cells_out))
 }
 # -------------------------------------------------------------- IDENTIFY SINGLE POINT OUTLIARS
 # USED IN WORKING PIPELINE

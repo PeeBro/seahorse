@@ -128,6 +128,14 @@ data$Zero_measurements %>%
 
 ```
 
+```{r echo=FALSE}
+data$Bad_Cells %>%  
+  kable(caption="Wells with OCR < 10 in the first interval") %>% 
+  kable_styling()
+
+```
+
+
 <br>
 <br>
 
