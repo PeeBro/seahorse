@@ -134,14 +134,15 @@ data$Zero_measurements %>%
 # OCR 
 ## Filter out irrelevant samples 
 ```{r  echo=FALSE}
-# perep for OCR interval 5 not used  
 d_OCR  <- dm
-# filter out samples with any of intervals having less than 8 measurements 
+
+# filter out samples with an interval smaller than 18 measurements. Each interval consist of three or four measurements, so 18/3 = 6 wells should be present. (This approach should work because if individual measurements of wells are wrong (too high/low Hg) then the entire well is removed from the analysis. Thus we do only have "complete" wells with all measurements intact at this point.)
 sumar <- d_OCR %>%
   group_by(sample_id, Interval) %>% 
   summarise(n = n()) %>% 
-  filter(n < 18) # les then 18 so it corespods to at least 6 different wells
-# number of intervals has to be 4 or discarted 
+  filter(n < 18)
+
+# number of intervals has to be 4 or the well discarted 
 inter <- d_OCR %>% 
   group_by(sample_id) %>% 
   summarise(n_inter = length(unique(Interval))) %>% 
@@ -153,9 +154,9 @@ d_OCR <- d_OCR %>%
 d_OCR <- d_OCR %>% 
   filter(! sample_id %in% unique(inter$sample_id))
 
-paste0("Samples removed due lack of usable measurements(less than 8  in any interval)")
+paste0("Wells removed due lack of usable measurements (Less than six usable wells in any interval)")
 unique(sumar$sample_id)
-paste0("Samples removed because there are no 4 intervals )")
+paste0("Wells removed because there are not four intervals")
 unique(inter$sample_id)
 ```
 
@@ -381,14 +382,14 @@ l.bio %>%
 ## Filter out irrelevant samples 
 
 ```{r echo=FALSE}
-# perep for PER interval 1 not used  
+# Interval 3 and 4 is not used
 d_PER <- dm %>% filter(!Interval %in% c("Int3", "Int4"))
                         
 # filter out samples with any of intervals having less than 8 measurements 
 sumar <- d_PER %>%
   group_by(sample_id, Interval) %>% 
   summarise(n = n()) %>% 
-  filter(n < 8 | Interval == "Int1" & n < 18 | Interval == "Int2" & n < 18)
+  filter(n < 18)
 
 # number of intervals has to be 2 or discarted 
 inter <- d_PER %>% 
@@ -400,9 +401,9 @@ d_PER <- d_PER %>%
   filter(! sample_id %in% unique(sumar$sample_id)) %>% 
   filter(! sample_id %in% unique(inter$sample_id))
 
-paste0("Samples removed due lack of usable measurements(less than 8  in any interval)")
+paste0("Wells removed due lack of usable measurements (Less than six usable wells in any interval)")
 unique(sumar$sample_id)
-paste0("Samples removed because it does not have 2 Intervals")
+paste0("Wells removed because there are not four intervals")
 unique(inter$sample_id)
 ```
 
