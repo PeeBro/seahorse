@@ -6,6 +6,7 @@
 correct_background_OCR <- function(d){
   # correct for outliars in background measurements and remove background
   # takes wells marked as Background and for each plate and time substracts median of those from OCR measurements
+  # Each measurement has its own background (Mean_to_substr)
 
   background <- d %>%
     filter(Group == "Background") %>%
