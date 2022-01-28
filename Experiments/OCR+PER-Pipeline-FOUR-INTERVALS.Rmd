@@ -4,7 +4,7 @@ output:
   html_document:
     number_sections: true
 params:
-  input_folder: "4_intervals_test"
+  input_folder: "GtF_2021-2"
 editor_options: 
   chunk_output_type: console
 ---
@@ -123,14 +123,14 @@ data$PER_background %>%
 
 ```{r echo=FALSE}
 data$Zero_measurements %>%  
-  kable(caption="Empty measurements") %>% 
+  kable(caption="Empty measurements (OCR or PER = 0") %>% 
   kable_styling()
 
 ```
 
 ```{r echo=FALSE}
-data$Bad_Cells %>%  
-  kable(caption="Wells with OCR < 10 in the first interval") %>% 
+data$No_cells_measured %>%  
+  kable(caption="Wells with no cells measured") %>% 
   kable_styling()
 
 ```
@@ -141,7 +141,7 @@ data$Bad_Cells %>%
 
 # OCR 
 ## Filter out irrelevant samples 
-```{r  echo=FALSE}
+```{r  echo=FALSE, message = FALSE}
 d_OCR  <- dm
 
 # filter out samples with an interval smaller than 18 measurements. Each interval consist of three or four measurements, so 18/3 = 6 wells should be present. (This approach should work because if individual measurements of wells are wrong (too high/low Hg) then the entire well is removed from the analysis. Thus we do only have "complete" wells with all measurements intact at this point.)
@@ -162,47 +162,45 @@ d_OCR <- d_OCR %>%
 d_OCR <- d_OCR %>% 
   filter(! sample_id %in% unique(inter$sample_id))
 
-paste0("Wells removed due lack of usable measurements (Less than six usable wells in any interval)")
-unique(sumar$sample_id)
-paste0("Wells removed because there are not four intervals")
-unique(inter$sample_id)
+cat("Wells removed due lack of usable measurements (Less than six usable wells in any interval): ", paste(unique(sumar$sample_id), collapse = "\n"), sep = "\n")
+cat("Wells removed because there are not four intervals: ", paste(unique(inter$sample_id), collapse = "\n"), sep = "\n")
 ```
 
-## Identify Outliers 
+## Identify Outliers
 Removed outliers in each iteration:
 ```{r echo=FALSE, echo=FALSE}
-# Identify Outliars 
-# DT = loaded dataframe 
-# cut.well = threshold for well outliaer, 
+# Identify Outliars
+# DT = loaded dataframe
+# cut.well = threshold for well outliaer,
 # cut.point = threshold for point outliaer
 # x = Variable: "LOCR", "OCR
 
-dr_ocr <- idfy_sinleP_outlier(d_OCR, cut.point = 6, x = "LOCR") 
-# clean enviroment 
+dr_ocr <- idfy_sinleP_outlier(d_OCR, cut.point = 6, x = "LOCR")
+# clean enviroment
 rm(d_OCR)
-# write the data into file 
-write_csv(dr_ocr, paste0(OUTPUT_PATH,"/Data_removed_OCR.csv"))  
+# write the data into file
+write_csv(dr_ocr, paste0(OUTPUT_PATH,"/Data_removed_OCR.csv"))
 ```
 
 ```{r echo=FALSE, warning=FALSE, echo=FALSE}
 # amount of removed outliars
-dr_ocr %>% 
-  group_by(sample_id, is.out.p) %>% 
-  summarise(n = n()) %>% 
-  group_by(sample_id) %>% 
-  mutate(size = sum(n), 
+dr_ocr %>%
+  group_by(sample_id, is.out.p) %>%
+  summarise(n = n()) %>%
+  group_by(sample_id) %>%
+  mutate(size = sum(n),
          ptg = n / size *100,
-         percentage = paste(format(ptg, digits= 1, nsmall=2),"%")) %>% 
-  filter(is.out.p == T) %>% 
-  arrange(desc(ptg)) %>% 
+         percentage = paste(format(ptg, digits= 1, nsmall=2),"%")) %>%
+  filter(is.out.p == T) %>%
+  arrange(desc(ptg)) %>%
   select(sample_id, percentage) %>%
-  kable(caption="Amount of removed outliers across samples") %>% 
+  kable(caption="Amount of removed outliers across samples") %>%
   kable_styling(full_width = F)
 
 
 ```
 
-## Print schemes of removed points for all samples 
+## Print schemes of removed points for all samples
 ```{r echo=FALSE, echo=FALSE, cache = TRUE}
 
 for (smpl in unique(dr_ocr$sample_id)) {
@@ -228,13 +226,13 @@ for (smpl in unique(dr_ocr$sample_id)) {
 #              geom_violin(aes(Interval, LOCR))+
 #              geom_point(aes(Interval, LOCR, color = is.out.p))+
 #              xlab("Interval")#+
-#  
+#
 #    print(plot +theme_bw())
 # }
 ```
 
 
-## Bioenergetics and Estimates 
+## Bioenergetics and Estimates
 ### Estimates
 Estimates are taken by median of measurements from each interval in sample. Estimates are  stored together with other details about the intervals in files called <Method>-Estimated_values.csv in OUTPUT folder.
 
@@ -242,7 +240,7 @@ If you want to see or change how they are computed see the function compute_bioe
 
 ```{r echo=FALSE}
 norm.be <- compute_bioenergetics_(dr_ocr, "OCR")
-log.be  <- compute_bioenergetics_(dr_ocr, "LOCR") 
+log.be  <- compute_bioenergetics_(dr_ocr, "LOCR")
 
 write_csv(norm.be$estimates, paste0(OUTPUT_PATH,"/OCR-Estimated_values.csv"))
 write_csv(log.be$estimates, paste0(OUTPUT_PATH,"/LOCR-Estimates_values.csv"))
@@ -252,7 +250,7 @@ write_csv(log.be$bioenergetics, paste0(OUTPUT_PATH,"/LOCR-BE-table.csv"))
 ```
 
 ```{r echo=FALSE, echo=FALSE}
-# Print interval estimates 
+# Print interval estimates
 norm.be$estimates[1:4,] %>%
   kable(digits = 3, caption = "Example of estimates file ") %>%
   kable_styling(full_width = F)
@@ -282,21 +280,21 @@ ggplot(log.be$estimates)+
 
 
 ### Bioenergetics
-Bioenergetics are computed from estimates, there there are two sets of bioenergetics provided. 
+Bioenergetics are computed from estimates, there there are two sets of bioenergetics provided.
 
   1. Ratio Based, computed from log(OCR) estimates Located in OUTPUT/LogOCR-BioEnergetics.csv
-  
+
   2. Difference based, computed from OCR esimates Located in OUTPUT/OCR-BioEnergetics.csv
 If you want to see or change how they are computed see the function compute_bioenergetics_() in file analysis_source_functions.R
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
 # ADD coefficients of variation
-# normal scale Bioenergetics 
+# normal scale Bioenergetics
 
 n.bio <- melt(norm.be$bioenergetics)
 
-n.bio %>% 
-  filter(variable != "Other") %>% 
+n.bio %>%
+  filter(variable != "Other") %>%
   ggplot(aes(variable, value, fill = variable ))+
   ggtitle("Difference based natural scale Bio-Energetics OCR")+
   geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
@@ -306,10 +304,10 @@ n.bio %>%
   theme_bw()
 
 
-# log scale Bioenergetics 
+# log scale Bioenergetics
 l.bio   <- melt(log.be$bioenergetics )
-l.bio %>% 
-  filter(variable != "Other") %>% 
+l.bio %>%
+  filter(variable != "Other") %>%
   ggplot(aes(variable, value, fill = variable))+
   ggtitle("Ratio based log scale Bio-Energetics OCR (folds)")+
   geom_boxplot( width = 0.5, outlier.size = -1, alpha = 0.7)+
@@ -319,46 +317,46 @@ l.bio %>%
   theme_bw()
 
 
-  
+
 
 ```
 
 ```{r echo=FALSE}
 # write difference based bioenergetics
-# uncomment and export be.er if you want to get standard errors of bioenergetics 
+# uncomment and export be.er if you want to get standard errors of bioenergetics
 # st.err <- melt(norm.be$standard.errors, value.name = "SE", variable.name = "Bio.e" )
 # be.er  <- left_join(n.bio, st.err, by = c("Sample", "variable"))
 # be.er  <- arrange(be.er, Sample)
 write_csv(n.bio, paste0(OUTPUT_PATH,"/OCR-BioEnergetics.csv"))
 
 # write ratio based bienergetics
-# # uncomment and export be.er if you want to get standard errors of bioenergetics 
+# # uncomment and export be.er if you want to get standard errors of bioenergetics
 # st.err <- melt(log.be$standard.errors, value.name = "SE", variable.name = "variable" )
-# be.er  <- left_join(l.bio, st.err, by = c("Sample", "variable"))  
+# be.er  <- left_join(l.bio, st.err, by = c("Sample", "variable"))
 # be.er <- arrange(be.er, Sample)
 write_csv(l.bio, paste0(OUTPUT_PATH,"/LogOCR-BioEnergetics.csv"))
-  
+
 
 ```
 
 ```{r echo=FALSE}
-# Print interval estimates 
+# Print interval estimates
 l.bio[1:4,] %>%
   kable(digits = 3, caption = "Example of Bioenergetics file ") %>%
   kable_styling(full_width = F)
 ```
 
-### Groups 
+### Groups
 
-If the sample_id of your samples contains letters A or B following graph will plot bioenergetics of the two grups. 
-It is suggested to use this plot only when you are looking at grouped samples and project name shouldn't contain letters A or B. Any sample that is not labeled will be part of B group. 
+If the sample_id of your samples contains letters A or B following graph will plot bioenergetics of the two grups.
+It is suggested to use this plot only when you are looking at grouped samples and project name shouldn't contain letters A or B. Any sample that is not labeled will be part of B group.
 
-You can change the A and B letters in the markdown code to compare other groups. 
+You can change the A and B letters in the markdown code to compare other groups.
 
 ```{r, echo=FALSE, fig.width = 10 }
 
 # difference based BE
-n.bio %>% 
+n.bio %>%
   mutate(Group = ifelse(grepl("A", Sample), "A", "B")) %>% # change "A" and "B" for any character or string
   ggplot(aes(Group, value, fill = variable))+
   ggtitle("OCR Normal scale Bio-Energetics biological groups ")+
@@ -370,7 +368,7 @@ n.bio %>%
   theme_bw()
 
 # ratio based BE
-l.bio %>% 
+l.bio %>%
   mutate(Group = ifelse(grepl("A", Sample), "A", "B")) %>% # change "A" and "B" for any character or string
   ggplot(aes(Group, value, fill = variable))+
   ggtitle("OCR Log scale Bio-Energetics biological groups ")+
@@ -387,61 +385,59 @@ l.bio %>%
 
 # PER
 
-## Filter out irrelevant samples 
+## Filter out irrelevant samples
 
-```{r echo=FALSE}
+```{r echo=FALSE, message = FALSE}
 # Interval 3 and 4 is not used
 d_PER <- dm %>% filter(!Interval %in% c("Int3", "Int4"))
-                        
-# filter out samples with any of intervals having less than 8 measurements 
+
+# filter out samples with any of intervals having less than 8 measurements
 sumar <- d_PER %>%
-  group_by(sample_id, Interval) %>% 
-  summarise(n = n()) %>% 
+  group_by(sample_id, Interval) %>%
+  summarise(n = n()) %>%
   filter(n < 18)
 
-# number of intervals has to be 2 or discarted 
-inter <- d_PER %>% 
-  group_by(sample_id) %>% 
-  summarise(n_inter = length(unique(Interval))) %>% 
+# number of intervals has to be 2 or discarted
+inter <- d_PER %>%
+  group_by(sample_id) %>%
+  summarise(n_inter = length(unique(Interval))) %>%
   filter(n_inter != 2)
 
-d_PER <- d_PER %>% 
-  filter(! sample_id %in% unique(sumar$sample_id)) %>% 
+d_PER <- d_PER %>%
+  filter(! sample_id %in% unique(sumar$sample_id)) %>%
   filter(! sample_id %in% unique(inter$sample_id))
 
-paste0("Wells removed due lack of usable measurements (Less than six usable wells in any interval)")
-unique(sumar$sample_id)
-paste0("Wells removed because there are not four intervals")
-unique(inter$sample_id)
+cat("Wells removed due lack of usable measurements (Less than six usable wells in any interval): ", paste(unique(sumar$sample_id), collapse = "\n"), sep = "\n")
+cat("Wells removed because there are not four intervals: ", paste(unique(inter$sample_id), collapse = "\n"), sep = "\n")
 ```
 
 ## Remove outliers
 ```{r echo=FALSE, echo=FALSE}
-# Identify Outliars 
-# DT = loaded dataframe 
-# cut.well = threshold for well outliaer, 
+# Identify Outliars
+# DT = loaded dataframe
+# cut.well = threshold for well outliaer,
 # cut.point = threshold for point outliaer
 # x = Variable: "LOCR" or "OCR" or "PER"
 
 dr_per <- idfy_sinleP_outlier(DT = d_PER, cut.point = 5, x = "PER" )  # could Print arguments
-# write the data into file 
-write_csv(dr_per, paste0(OUTPUT_PATH,"/Data_removed_PER.csv"))  
+# write the data into file
+write_csv(dr_per, paste0(OUTPUT_PATH,"/Data_removed_PER.csv"))
 ```
 
 ```{r echo=FALSE, warning=FALSE, echo=FALSE}
-#TO DO: convert graph to aditive add legends 
-#TO DO: convert graph to aditive add legends 
-dr_per %>% 
-  group_by(sample_id, is.out.p) %>% 
-  summarise(n = n()) %>% 
-  group_by(sample_id) %>% 
-  mutate(size = sum(n), 
+#TO DO: convert graph to aditive add legends
+#TO DO: convert graph to aditive add legends
+dr_per %>%
+  group_by(sample_id, is.out.p) %>%
+  summarise(n = n()) %>%
+  group_by(sample_id) %>%
+  mutate(size = sum(n),
          ptg = n / size *100,
-         percentage = paste(format(ptg, digits= 1, nsmall=2),"%")) %>% 
-  filter(is.out.p == T) %>% 
-  arrange(desc(ptg)) %>% 
+         percentage = paste(format(ptg, digits= 1, nsmall=2),"%")) %>%
+  filter(is.out.p == T) %>%
+  arrange(desc(ptg)) %>%
   select(sample_id, percentage) %>%
-  kable(caption="Amount of removed outliers across samples") %>% 
+  kable(caption="Amount of removed outliers across samples") %>%
   kable_styling(full_width = F)
 
 ```
@@ -449,7 +445,7 @@ dr_per %>%
 
 ## Print schemes of removed points for all samples
 ```{r echo=FALSE}
-ylim_low <- min(dr_per$PER)-50
+ylim_low <- min(dr_per$PER) #write - x where x is a number to adjust the starting point of the y axis
 ylim_high <- max(dr_per$PER)
 for (smpl in unique(dr_per$sample_id)) {
   plot <- ggplot(filter(dr_per, sample_id == smpl), aes(Measurement, PER))+
@@ -460,16 +456,16 @@ for (smpl in unique(dr_per$sample_id)) {
             xlab("Measurement")+
             ylim(ylim_low,ylim_high)+
             NULL
-  
+
   print(plot +theme_bw())
 }
 ```
 
-## Bioenergetics and Estimates 
+## Bioenergetics and Estimates
 
 ```{r echo=FALSE}
-norm.be.PER <- compute_bioenergetics_(dr_per, "PER") 
-log.be.PER  <- compute_bioenergetics_(dr_per, "LPER") 
+norm.be.PER <- compute_bioenergetics_(dr_per, "PER")
+log.be.PER  <- compute_bioenergetics_(dr_per, "LPER")
 
 write_csv(norm.be.PER$estimates, paste0(OUTPUT_PATH,"/PER-Estimated_values.csv"))
 write_csv(log.be.PER$estimates, paste0(OUTPUT_PATH,"/LPER-Estimated_values.csv"))
@@ -481,7 +477,7 @@ write_csv(log.be.PER$bioenergetics, paste0(OUTPUT_PATH,"/LPER-BE-table.csv"))
 ```{r echo=FALSE}
 
 # norm estimates boxplots
-norm.be.PER$estimates %>% 
+norm.be.PER$estimates %>%
   ggplot(aes(Interval,mean))+
   ggtitle("PER Estimates natural scale")+
   geom_boxplot( width = 0.6, outlier.size = -1, show.legend = FALSE, fill="pink", alpha = 0.7)+
@@ -492,7 +488,7 @@ norm.be.PER$estimates %>%
   theme_bw()
 
 # log estimates boxplots
-log.be.PER$estimates %>%   
+log.be.PER$estimates %>%
   ggplot(aes(Interval,mean))+
   ggtitle("Log PER Estimates")+
   geom_boxplot(width = 0.6, outlier.size = -1, show.legend = FALSE, fill="pink", alpha = 0.7)+
@@ -500,11 +496,11 @@ log.be.PER$estimates %>%
   geom_jitter(width = 0.2, show.legend = FALSE, size = 0.5 )+
   xlab("Intervals")+
   ylab("logPER")+
-  theme_bw() 
-  
-  
-  
-  
+  theme_bw()
+
+
+
+
 ```
 
 
@@ -512,11 +508,11 @@ log.be.PER$estimates %>%
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width = 8}
 # ADD coefficients of variation
-# normal scale Bioenergetics 
+# normal scale Bioenergetics
 
 n.bio.PER <- melt(norm.be.PER$bioenergetics)
-n.bio.PER %>% 
-  filter(variable != "Other") %>% 
+n.bio.PER %>%
+  filter(variable != "Other") %>%
   ggplot(aes(variable, value, fill = variable ))+
   ggtitle("Difference based natural scale Bio-Energetics PER")+
   geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
@@ -526,10 +522,10 @@ n.bio.PER %>%
   theme_bw()
 
 
-# log scale Bioenergetics 
+# log scale Bioenergetics
 l.bio.PER   <- melt(log.be.PER$bioenergetics )
-l.bio.PER %>% 
-  filter(variable != "Other") %>% 
+l.bio.PER %>%
+  filter(variable != "Other") %>%
   ggplot(aes(variable, value, fill = variable ))+
   ggtitle("Difference based log scale Bio-Energetics PER")+
   geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
@@ -547,7 +543,7 @@ l.bio.PER %>%
 write_csv(n.bio.PER, paste0(OUTPUT_PATH,"/PER-BioEnergetics.csv"))
 # add standard errors
 # st.err <- melt(log.be$standard.errors, value.name = "SE", variable.name = "variable" )
-# be.er  <- left_join(l.bio.PER, st.err, by = c("Sample", "variable"))  
+# be.er  <- left_join(l.bio.PER, st.err, by = c("Sample", "variable"))
 # be.er <- arrange(be.er, Sample)
 write_csv(l.bio.PER, paste0(OUTPUT_PATH,"/logPER-BioEnergetics.csv"))
 
@@ -560,8 +556,8 @@ write_csv(l.bio.PER, paste0(OUTPUT_PATH,"/logPER-BioEnergetics.csv"))
 
 ```{r echo=FALSE, fig.width=8}
 # difference based BE
-n.bio.PER %>% 
-  mutate(Group = ifelse(grepl("A", Sample), "A", "B")) %>% 
+n.bio.PER %>%
+  mutate(Group = ifelse(grepl("A", Sample), "A", "B")) %>%
   ggplot(aes(Group, value, fill = variable))+
   ggtitle("PER Normal scale Bio-Energetics biological groups ")+
   geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
@@ -572,8 +568,8 @@ n.bio.PER %>%
   theme_bw()
 
 # ratio based BE
-l.bio.PER %>% 
-  mutate(Group = ifelse(grepl("A", Sample), "A", "B")) %>% 
+l.bio.PER %>%
+  mutate(Group = ifelse(grepl("A", Sample), "A", "B")) %>%
   ggplot(aes(Group, value, fill = variable))+
   ggtitle("PER Log scale Bio-Energetics biological groups ")+
   geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
@@ -590,16 +586,16 @@ l.bio.PER %>%
 # PER vs OCR
 
 ```{r echo=FALSE}
-basal.OCR <- n.bio %>% 
-  filter(variable == "Basal.Resp") %>% 
+basal.OCR <- n.bio %>%
+  filter(variable == "Basal.Resp") %>%
   mutate(Group = ifelse(grepl("A", Sample), "A", "B"))
-basal.PER <- n.bio.PER %>% 
-  filter(variable == "Basal.PER") %>% 
+basal.PER <- n.bio.PER %>%
+  filter(variable == "Basal.PER") %>%
   mutate(Group = ifelse(grepl("A", Sample), "A", "B"))
 
 total <- merge(basal.PER, basal.OCR, by = "Sample", suffixes = c(".PER", ".OCR"))
 
-# total <- total %>% 
+# total <- total %>%
 #   mutate(Group = ifelse(grepl("B", Sample), "Post", "Pre"))
 
 ggplot(total)+
@@ -608,19 +604,19 @@ ggplot(total)+
   ylab("Basal OCR")+
   xlab("Basal PER")+
   theme_bw()
-  
-  
+
+
 ```
 
 ```{r echo=FALSE}
-max.OCR   <- n.bio %>% filter(variable == "Maximal.Resp") %>% 
+max.OCR   <- n.bio %>% filter(variable == "Maximal.Resp") %>%
   mutate(Group = ifelse(grepl("A", Sample), "A", "B"))
-max.PER <- n.bio.PER %>% filter(variable == "Max.PER") %>% 
+max.PER <- n.bio.PER %>% filter(variable == "Max.PER") %>%
   mutate(Group = ifelse(grepl("A", Sample), "A", "B"))
 
 total_max <- merge(max.PER, max.OCR, by = "Sample", suffixes = c(".PER", ".OCR"))
 
-# total <- total %>% 
+# total <- total %>%
 #   mutate(Group = ifelse(grepl("B", Sample), "Post", "Pre"))
 
 ggplot(total_max)+
@@ -629,8 +625,8 @@ ggplot(total_max)+
   ylab("Max OCR")+
   xlab("Max PER")+
   theme_bw()
-  
-  
+
+
 ```
 
 # Stines test area. Must be deleted when pipeline is finished

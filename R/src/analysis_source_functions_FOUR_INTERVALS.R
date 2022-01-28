@@ -52,7 +52,6 @@ correct_background_PER <- function(d){
   rm(background,d)
 }
 
-# --------------------------------------------------------------------------------------CONSTRUCT DATA
 get_intervals <- function(x, y){
   # Identifies Interval from measurement and accumulated sum of number of measurements in each interval. Used with mapply
   # INPUT x = Measurement, y = accumulated sum of number of measurements in each interval
@@ -70,6 +69,46 @@ get_intervals <- function(x, y){
   return("Other")
 }
 
+normalize_based_on_cell_counts <- function(filename, d) {
+  
+  # Read cell counts (suppressMessages removes an irrelevant R message in the final output)
+  cell_counts <- suppressMessages(read_xlsx(filename, 
+            sheet = "Assay Configuration",
+            range = "B84:N92",
+            col_names = TRUE),  classes = "message")
+  
+  # Rename columns so the numbering is identical to that of the well names
+  colnames(cell_counts)[2:10] <- c("01", "02", "03", "04", "05", "06", "07", "08", "09")
+  
+  # Convert the matrix into three columns: One with the well column number, one with the well letter and one with the number of cells in that well
+  cell_counts <- cell_counts %>% pivot_longer(cols = !"...1", names_to = "well_col", values_to = "cells")
+  colnames(cell_counts)[1] <- "well_row"
+  
+  # Make a new column with cells/1000 and make a new column with the well name (combine letter and number)
+  cell_counts <- cell_counts %>% mutate(cells_1000 = cells/1000,
+                                        Well = paste(well_row, well_col, sep = ""))
+  
+  # Remove unwanted columns
+  cell_counts <- cell_counts[4:5]
+  
+  # Add the cell/1000 count values too the d table, and calculate the normalized OCR, ECAR and PER
+  d <- merge(d, cell_counts)
+  
+  d <- d %>% mutate(OCR_norm = OCR/cells_1000,
+                    PER_norm = PER/cells_1000,
+                    ECAR_norm = ECAR/cells_1000) 
+  
+  # Remove old OCR, ECAR and PER columns, and rename the normalized columns to OCR, ECAR, PER
+  d <- d %>% select(!c(OCR, ECAR, PER))
+  colnames(d)[7:9] <- c("OCR", "PER", "ECAR")
+      
+  
+  return(d)
+}
+
+# --------------------------------------------------------------------------------------CONSTRUCT DATA
+
+
 read_xlsx_set <- function(path_, pattern_){
   # returns a combined dataframe from all .xlsx files in folder (path_).
   # can specify pattern to distinguish "group1" "group2"  treatment as: pattern_ = "*group1/group2.xlsx"
@@ -81,7 +120,7 @@ read_xlsx_set <- function(path_, pattern_){
   PER_background_out <- data_frame()
   OCR_background_out  <- data_frame()
   Empty_out <- data_frame()
-  Bad_cells_out <- data_frame()
+  No_cells_out <- data_frame()
   
   # for every file create a data frame and merge into one
   for (x in files) {
@@ -185,6 +224,20 @@ read_xlsx_set <- function(path_, pattern_){
         drop_na()
     }
     
+    #### Normalize based on cell counts (pr. 1000 cells) and remove wells where no cells are measured
+    d <- normalize_based_on_cell_counts(x,d)
+
+    out <- d %>% filter(cells_1000 == 0)
+    
+    no_cells_measured <- data_frame(
+      Plate = unique(out$plate_id),
+      N_out = nrow(out),
+      Wells = paste0(unique(out$Well), collapse = " "),
+      Measurement = paste0(out$Measurement, collapse = " "))
+    
+    d <- d %>% filter(!cells_1000 == 0)
+    No_cells_out<- rbind(No_cells_out, no_cells_measured)    
+    
     
     # Remove wells where OCR or PER is 0
     out <- d %>% filter(OCR == 0 | PER == 0)
@@ -199,18 +252,18 @@ read_xlsx_set <- function(path_, pattern_){
     Empty_out<- rbind(Empty_out, zero_OCR_PER)
     
 
-    # Remove wells where OCR < 10 in the first interval
-    out <- d %>% filter(Measurement <= acc_length_intervals[1,1]) %>% 
-                 filter(OCR <= 10)
-    
-    less_than_10_OCR <- data_frame(
-      Plate = unique(out$plate_id),
-      N_out = nrow(out),
-      Wells = paste0(unique(out$Well), collapse = " "),
-      Measurement = paste0(out$Measurement, collapse = " "))
-    
-    d <- d %>% filter(!Well %in% out$Well)
-    Bad_cells_out <- rbind(Bad_cells_out, less_than_10_OCR)
+    # # Remove wells where OCR < 10 in the first interval
+    # out <- d %>% filter(Measurement <= acc_length_intervals[1,1]) %>% 
+    #              filter(OCR <= 10)
+    # 
+    # less_than_10_OCR <- data_frame(
+    #   Plate = unique(out$plate_id),
+    #   N_out = nrow(out),
+    #   Wells = paste0(unique(out$Well), collapse = " "),
+    #   Measurement = paste0(out$Measurement, collapse = " "))
+    # 
+    # d <- d %>% filter(!Well %in% out$Well)
+    # Bad_cells_out <- rbind(Bad_cells_out, less_than_10_OCR)
         
     
     
@@ -252,7 +305,7 @@ read_xlsx_set <- function(path_, pattern_){
   }
   
   
-  return(list(rates = merged_d, Hg_list = Hg_out, PER_background = PER_background_out, OCR_background = OCR_background_out, Zero_measurements = Empty_out, Bad_Cells = Bad_cells_out))
+  return(list(rates = merged_d, Hg_list = Hg_out, PER_background = PER_background_out, OCR_background = OCR_background_out, Zero_measurements = Empty_out, No_cells_measured = No_cells_out))
 }
 # -------------------------------------------------------------- IDENTIFY SINGLE POINT OUTLIARS
 # USED IN WORKING PIPELINE
