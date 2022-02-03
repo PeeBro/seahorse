@@ -85,7 +85,7 @@ for (folder in knit_folders) {
 
 
 # Initialize the knitting process
-rmarkdown::render(here('Experiments', "OCR+PER-Pipeline-FOUR-INTERVALS.Rmd"), output_dir = OUTPUT_PATH)
+# rmarkdown::render(here('Experiments', "OCR+PER-Pipeline-FOUR-INTERVALS.Rmd"), output_dir = OUTPUT_PATH)
 ```
 
 # Overview of data
@@ -134,7 +134,7 @@ data$PER_background %>%
 
 ```{r echo=FALSE}
 data$Zero_measurements %>%  
-  kable(caption="Empty measurements (OCR or PER = 0") %>% 
+  kable(caption="Empty measurements (OCR or PER = 0)") %>% 
   kable_styling()
 
 ```

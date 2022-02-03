@@ -106,6 +106,18 @@ normalize_based_on_cell_counts <- function(filename, d) {
   return(d)
 }
 
+report_removed_wells <- function(out) {
+  out_wells_pretty <- out %>% group_by(Well, plate_id) %>% arrange(Measurement) %>% summarise(Measurement = toString(Measurement),
+                                                                                                n_out = n())
+  df <- data_frame(
+    Plate = out_wells_pretty$plate_id,
+    N_out = out_wells_pretty$n_out,
+    Wells = out_wells_pretty$Well,
+    Measurement = out_wells_pretty$Measurement)
+  
+  return(df)
+}
+
 # --------------------------------------------------------------------------------------CONSTRUCT DATA
 
 
@@ -195,19 +207,10 @@ read_xlsx_set <- function(path_, pattern_){
     
     # Remove wells with OCR less than 10 in the first interval and which is NOT a background measurement
     
-    out <- d %>% filter(Measurement <= acc_length_intervals[1,1]) 
-    
-    out <- out %>% filter(!Group == "Background")
-    out <- out %>% filter(OCR <= 10)
-
-    less_than_10_OCR <- data_frame(
-      Plate = unique(out$plate_id),
-      N_out = nrow(out),
-      Wells = paste0(unique(out$Well), collapse = " "),
-      Measurement = paste0(out$Measurement, collapse = " "))
-
-    d <- d %>% filter(!Well %in% out$Well)
-    Bad_cells_out <- rbind(Bad_cells_out, less_than_10_OCR)
+    out <- d %>% filter(Measurement <= acc_length_intervals[1,1]) %>% filter(!Group == "Background") %>% filter(OCR <= 10)
+    less_than_10_OCR <- report_removed_wells(out) # Make table with removed wells
+    d <- d %>% filter(!Well %in% out$Well) # Remove bad wells from the data
+    Bad_cells_out <- rbind(Bad_cells_out, less_than_10_OCR) # Merge table with all other excel files seen so far
     
     
     
@@ -221,22 +224,14 @@ read_xlsx_set <- function(path_, pattern_){
       d    <- corr$data
       out  <- corr$removed
       # to report which measurements were removed
-      removed_PER_background <- data_frame(
-        Plate = unique(d$plate_id),
-        N_out = nrow(out),
-        Wells = paste0(unique(out$Well), collapse = " "),
-        Measurement = paste0(out$Measurement, collapse = " "))
+      removed_PER_background <- report_removed_wells(out)
       PER_background_out <- rbind(PER_background_out, removed_PER_background)
       #OCR
       corr <- correct_background_OCR(d)
       d    <- corr$data
       out  <- corr$removed
       # to report which measurements were removed      
-      removed_OCR_background <- data_frame(
-        Plate = unique(d$plate_id),
-        N_out = nrow(out),
-        Wells = paste0(unique(out$Well), collapse = " "),
-        Measurement = paste0(out$Measurement, collapse = " "))
+      removed_OCR_background <- report_removed_wells(out)
       OCR_background_out <- rbind(OCR_background_out, removed_OCR_background)
       
       d <- d %>% filter(Group != "Background") %>% 
@@ -247,29 +242,16 @@ read_xlsx_set <- function(path_, pattern_){
     d <- normalize_based_on_cell_counts(x,d)
 
     out <- d %>% filter(cells_1000 == 0)
-    
-    no_cells_measured <- data_frame(
-      Plate = unique(out$plate_id),
-      N_out = nrow(out),
-      Wells = paste0(unique(out$Well), collapse = " "),
-      Measurement = paste0(out$Measurement, collapse = " "))
-    
+    no_cells_measured <- report_removed_wells(out)
     d <- d %>% filter(!cells_1000 == 0)
     No_cells_out<- rbind(No_cells_out, no_cells_measured)    
     
     
     # Remove wells where OCR or PER is 0
     out <- d %>% filter(OCR == 0 | PER == 0)
-    
-    zero_OCR_PER <- data_frame(
-      Plate = unique(out$plate_id),
-      N_out = nrow(out),
-      Wells = paste0(unique(out$Well), collapse = " "),
-      Measurement = paste0(out$Measurement, collapse = " "))
-    
+    zero_OCR_PER <- report_removed_wells(out)
     d <- d %>%filter(!(OCR == 0 | PER == 0))
     Empty_out<- rbind(Empty_out, zero_OCR_PER)
-    
     
     # Filter out whole wells where average of first ticks from first three measurements
     # are exceeding interval 140 - 160 mmHg
@@ -277,9 +259,9 @@ read_xlsx_set <- function(path_, pattern_){
     d <- d %>% filter(! Well %in% out_Hg$Well)
     # make line for report matrix
     removed_Hg <- data_frame(
-      Plate = unique(d$plate_id),
-      N_out = nrow(out_Hg),
-      Wells = paste0(out_Hg$Well, collapse = " "))
+        Plate = unique(d$plate_id),
+        N_out = nrow(out_Hg),
+        Wells = paste0(out_Hg$Well, collapse = ", "))
     Hg_out <- rbind(Hg_out, removed_Hg)
     rm(raw, out_Hg)
     # ----------------
