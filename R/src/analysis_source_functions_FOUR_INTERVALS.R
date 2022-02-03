@@ -3,6 +3,8 @@
 
 # ------------------- BACKGROUND CORRECTION
 
+options(dplyr.summarise.inform = FALSE)
+
 correct_background_OCR <- function(d){
   # correct for outliars in background measurements and remove background
   # takes wells marked as Background and for each plate and time substracts median of those from OCR measurements
@@ -204,6 +206,24 @@ read_xlsx_set <- function(path_, pattern_){
     
     # remove Unassigned wells
     d <- d %>%filter(Group != "Unassigned")
+    
+    # Check for missing PER values in background measurements and correct them
+    background <- d %>% filter(Group == "Background")
+    zero_PER <- nrow(background[background$PER == 0,]) > 0 # Looks in background table and check if any PER values are 0. If yes the value of zero_PER is "TRUE". If no zeroes are present, then zero_PER = "FALSE"
+    zero_ECAR <- nrow(background[background$ECAR == 0,]) > 0 # Repeat for ECAR. If ECAR has no zeroes we can calculate PER from ECAR
+    if(zero_PER == TRUE & zero_ECAR == FALSE) {
+      conversion_factor <- d %>% filter(Group != "Background") %>% summarize(conversion = round(PER/ECAR, 4))
+      conversion_factor <- unique(conversion_factor)
+      if(nrow(conversion_factor) == 1) {
+        conversion_factor <- as.double(conversion_factor)
+        d <- d %>% mutate(PER = ifelse(PER == 0, ECAR*conversion_factor,PER))
+        message(sprintf("Some or all PER background values are zero in file '%s'. Missing PER background values are calculated by: ECAR * %f (ratio of PER and ECAR)", assay_name,conversion_factor))
+        
+      } else {
+        message(sprintf("Some or all PER background values are zero in file '%s'. Missing PER values could not be calculated, due to inconsistant ratios between ECAR and PER",assay_name))
+      }
+    }
+    
     
     # Remove wells with OCR less than 10 in the first interval and which is NOT a background measurement
     
