@@ -5,6 +5,7 @@ params:
   input_folder: "test"
 ---
 
+THIS IS A TEST
 
 HOW TO USE
 
@@ -15,6 +16,7 @@ Step 3: Run the code chunk below
 
 ```{r eval = FALSE, include=FALSE}
 # Set path and load the package "here"
+
 here::i_am("Experiments/OCR+ECAR-Pipeline.Rmd")
 
 if(!("here" %in% installed.packages()[, "Package"])) {
@@ -46,7 +48,7 @@ input_folder <- params$input_folder
 # Create output folder
 
 output_folder <- sprintf("%s_OUTPUT", input_folder)
-o_path <- sprintf("./Data/OUTPUT/%s", output_folder)
+o_path <- sprintf("../Data/OUTPUT/%s", output_folder)
 
 if(!dir.exists(o_path)){
   dir.create(path = o_path)
@@ -70,7 +72,6 @@ for (folder in knit_folders) {
   if (file.exists(folder))
   unlink(folder, recursive = T)
 }
-
 
 
 # Initialize the knitting process
