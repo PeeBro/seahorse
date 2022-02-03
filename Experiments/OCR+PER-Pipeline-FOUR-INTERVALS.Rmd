@@ -103,6 +103,7 @@ dm <- data$rates
 # Wells excluded from the analysis
 Steps performed: 
 - Remove unassigned wells
+- Remove wells with OCR <= 10 in the first interval
 - Remove bad backgrounds for OCR and PER separately 
 - Correct background for OCR and PER separately
 - Normalize wells based on cell count (OCR/1000 cells and PER/1000 cells)
