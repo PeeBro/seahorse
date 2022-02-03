@@ -180,7 +180,7 @@ cat("Wells removed because there are not four intervals: ", paste(unique(inter$s
 
 ## Identify Outliers
 Steps performed:
-- Use an iterative process to remove outliers 
+- Use an iterative process to remove outliers
 
 
 Removed outliers in each iteration:
