@@ -89,7 +89,7 @@ rmarkdown::render(here('Experiments', "OCR+PER-Pipeline-FOUR-INTERVALS.Rmd"), ou
 ```
 
 # Overview of data
-Steps performed:
+Steps performed: <br>
 - Load data
 
 ```{r, message=TRUE, warning=FALSE, echo=FALSE, paged.print=FALSE}
@@ -101,15 +101,15 @@ dm <- data$rates
 ```
 
 # Wells excluded from the analysis
-Steps performed: 
-- Remove unassigned wells
-- Remove wells with OCR <= 10 in the first interval
-- Remove bad backgrounds for OCR and PER separately 
-- Correct background for OCR and PER separately
-- Normalize wells based on cell count (OCR/1000 cells and PER/1000 cells)
-- Remove wells with no cell count measured
-- Remove wells where OCR and PER is 0
-- Remove wells based on Hg measurements
+Steps performed: <br>
+- Remove unassigned wells <br>
+- Remove wells with OCR <= 10 in the first interval <br>
+- Remove bad backgrounds for OCR and PER separately <br>
+- Correct background for OCR and PER separately <br>
+- Normalize wells based on cell count (OCR/1000 cells and PER/1000 cells) <br>
+- Remove wells with no cell count measured <br>
+- Remove wells where OCR and PER is 0 <br>
+- Remove wells based on Hg measurements <br>
 
 ```{r echo=FALSE}
 data$Hg_list %>%  
@@ -134,7 +134,7 @@ data$PER_background %>%
 
 ```{r echo=FALSE}
 data$Zero_measurements %>%  
-  kable(caption="Empty measurements (OCR or PER = 0") %>% 
+  kable(caption="Empty measurements (OCR or PER = 0)") %>% 
   kable_styling()
 
 ```
@@ -158,8 +158,8 @@ data$Bad_Cells %>%
 
 # OCR 
 ## Filter out irrelevant samples 
-Steps performed:
-- Check the number of intervals is correct
+Steps performed: <br>
+- Check that the number of intervals for each sample is four and that no sample has an interval with less than 18 measurements <br>
 ```{r  echo=FALSE, message = FALSE}
 d_OCR  <- dm
 
@@ -186,11 +186,10 @@ cat("Wells removed because there are not four intervals: ", paste(unique(inter$s
 ```
 
 ## Identify Outliers
-Steps performed:
+Steps performed: <br>
 - Use an iterative process to remove outliers
 
-
-Removed outliers in each iteration:
+Removed outliers in each iteration: <br>
 ```{r echo=FALSE, echo=FALSE}
 # Identify Outliars
 # DT = loaded dataframe
