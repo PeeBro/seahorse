@@ -411,43 +411,6 @@ l.bio[1:4,] %>%
   kable_styling(full_width = F)
 ```
 
-### Groups
-
-If the sample_id of your samples contains letters A or B following graph will plot bioenergetics of the two grups.
-It is suggested to use this plot only when you are looking at grouped samples and project name shouldn't contain letters A or B. Any sample that is not labeled will be part of B group.
-
-You can change the A and B letters in the markdown code to compare other groups.
-
-```{r, echo=FALSE, fig.width = 10 }
-
-# difference based BE
-n.bio %>%
-  mutate(Group = ifelse(grepl("A", Sample), "A", "B")) %>% # change "A" and "B" for any character or string
-  ggplot(aes(Group, value, fill = variable))+
-  ggtitle("OCR Normal scale Bio-Energetics biological groups ")+
-  geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
-  geom_jitter(width = 0.1, show.legend = FALSE, size = 0.5)+
-  xlab("Bio-Energetics")+
-  ylab("OCR")+
-  facet_grid(. ~ variable ) +
-  theme_bw()
-
-# ratio based BE
-l.bio %>%
-  mutate(Group = ifelse(grepl("A", Sample), "A", "B")) %>% # change "A" and "B" for any character or string
-  ggplot(aes(Group, value, fill = variable))+
-  ggtitle("OCR Log scale Bio-Energetics biological groups ")+
-  geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
-  geom_jitter(width = 0.1, show.legend = FALSE, size = 0.5)+
-  xlab("Bio-Energetics")+
-  ylab("OCR")+
-  facet_grid(. ~ variable ) +
-  theme_bw()
-
-
-```
-
-
 # PER
 
 ## Filter out irrelevant samples
@@ -659,36 +622,6 @@ write_csv(n.bio.PER, paste0(OUTPUT_PATH,"/PER-BioEnergetics.csv"))
 write_csv(l.bio.PER, paste0(OUTPUT_PATH,"/logPER-BioEnergetics.csv"))
 
 
-
-
-```
-
-### Groups
-
-```{r echo=FALSE, fig.width=8}
-# difference based BE
-n.bio.PER %>%
-  mutate(Group = ifelse(grepl("A", Sample), "A", "B")) %>%
-  ggplot(aes(Group, value, fill = variable))+
-  ggtitle("PER Normal scale Bio-Energetics biological groups ")+
-  geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
-  geom_jitter(width = 0.1, show.legend = FALSE, size = 0.5)+
-  xlab("Bio-Energetics")+
-  ylab("PER")+
-  facet_grid(. ~ variable ) +
-  theme_bw()
-
-# ratio based BE
-l.bio.PER %>%
-  mutate(Group = ifelse(grepl("A", Sample), "A", "B")) %>%
-  ggplot(aes(Group, value, fill = variable))+
-  ggtitle("PER Log scale Bio-Energetics biological groups ")+
-  geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
-  geom_jitter(width = 0.1, show.legend = FALSE, size = 0.5)+
-  xlab("Bio-Energetics")+
-  ylab("logPER")+
-  facet_grid(. ~ variable ) +
-  theme_bw()
 
 
 ```
