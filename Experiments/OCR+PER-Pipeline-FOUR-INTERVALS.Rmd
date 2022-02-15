@@ -236,11 +236,64 @@ for (smpl in unique(dr_ocr$sample_id)) {
             guides(color=guide_legend(title="Outlier"))+
             xlab("Measurement")+
             # ylim(0,15)+
-            ylab("OCR (Normalized)")
+            ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))
 
   print(plot +theme_bw())
 }
 ```
+
+## Summary statistics for each sample
+```{r echo = FALSE}
+ocr_summary_stats <- dr_ocr %>% filter(is.out.p == FALSE) %>% 
+  group_by(sample_id, Well, Interval, Group) %>% 
+  summarise(well_mean = mean(OCR))%>% # Gives the mean value of each well withour outliers
+  group_by(Group, Interval) %>% # Gives the mean value of each sample without outliers
+  summarise(sample_mean = mean(well_mean),
+            well_mean,
+            Well)
+
+locr_summary_stats <- dr_ocr %>% filter(is.out.p == FALSE) %>% 
+  group_by(sample_id, Well, Interval, Group) %>% 
+  summarise(well_mean = mean(LOCR))%>% # Gives the mean value of each well withour outliers
+  group_by(Group, Interval) %>% # Gives the mean value of each sample without outliers
+  summarise(sample_mean = mean(well_mean),
+            well_mean,
+            Well)
+
+
+
+ocr_summary_stats %>% ggplot(mapping = aes(x = Interval, y = well_mean, group = Group)) +
+  geom_line(mapping = aes(x = Interval, y = sample_mean, group = Group), size = 0.2, color = "grey", position = position_dodge(width = 0.2) ) +
+  geom_point(mapping = aes(x = Interval, y = sample_mean, fill = Group), color = "black", shape = 21, size = 3, position = position_dodge(width = 0.2) )+
+  # stat_summary(fun = mean, geom = "crossbar", width = 0.1, aes(color = Group))+
+  stat_summary(fun.max = function(x) mean(x) + sd(x),
+               fun.min = function(x) mean(x) - sd(x), geom = "errorbar", width = 0.4, size = 0.5, aes(color = Group), position = position_dodge(width = 0.2) )+
+  scale_fill_brewer(palette = "Dark2")+
+  scale_color_brewer(palette = "Dark2")+
+  ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))+
+  # geom_jitter(dr_ocr)
+  theme_bw()+
+  ggtitle("OCR estimates sample summary (Outliers removed)")
+
+locr_summary_stats %>% ggplot(mapping = aes(x = Interval, y = well_mean, group = Group)) +
+  geom_line(mapping = aes(x = Interval, y = sample_mean, group = Group), size = 0.2, color = "grey", position = position_dodge(width = 0.2) ) +
+  geom_point(mapping = aes(x = Interval, y = sample_mean, fill = Group), color = "black", shape = 21, size = 3, position = position_dodge(width = 0.2) )+
+  # stat_summary(fun = mean, geom = "crossbar", width = 0.1, aes(color = Group))+
+  stat_summary(fun.max = function(x) mean(x) + sd(x),
+               fun.min = function(x) mean(x) - sd(x), geom = "errorbar", width = 0.4, size = 0.5, aes(color = Group), position = position_dodge(width = 0.2) )+
+  scale_fill_brewer(palette = "Dark2")+
+  scale_color_brewer(palette = "Dark2")+
+  ylab(expression("Mean LOCR value [log10(pmol O"[2]*" /1000 cells)]"))+
+  # geom_jitter(dr_ocr)
+  theme_bw()+
+  ggtitle("LOCR estimates sample summary (Outliers removed)")
+
+message("Figure description: Colored points are the group mean of wells, and the errorbars shows the sd of the well means for each group")
+
+```
+
+
+
 
 
 ## Bioenergetics and Estimates
@@ -310,34 +363,36 @@ ocr_stats %>% ggplot(aes(x=Group, y=well_mean)) +
   facet_wrap(~Interval, scales = "free")+
   ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))+
   xlab("Sample")+
-  stat_summary(fun = mean, geom = "crossbar", width = 0.5)+
+  stat_summary(fun = mean, geom = "crossbar", width = 0.3)+
   stat_summary(fun.max = function(x) mean(x) + sd(x),
-               fun.min = function(x) mean(x) - sd(x), geom = "errorbar")+
-  geom_point(aes(x=Group, y = replicate_mean, fill = Date), color = "Black", size = 5, shape = 21)+
-  theme_minimal()+
+               fun.min = function(x) mean(x) - sd(x), geom = "errorbar", width = 0.3)+
+  geom_point(aes(x=Group, y = replicate_mean, fill = Date), color = "Black", size = 4, shape = 21)+
+  theme_bw()+
   theme(legend.position="bottom",     
         strip.text.x = element_text(size = 12, face = "bold"),
         strip.text.y = element_text(size = 12, face = "bold"))+
   scale_colour_brewer(palette = "Dark2")+
   scale_fill_brewer(palette = "Dark2")+
-  ggtitle("OCR estimates")
+  ggtitle("OCR estimates shown by well, replicate and sample")
 
 locr_stats %>% ggplot(aes(x=Group, y=well_mean)) + 
   geom_beeswarm(aes(color = Date), cex=2, dodge.width = 0)+
   facet_wrap(~Interval, scales = "free")+
   ylab(expression("Mean Log(OCR) value [log10(pmol O"[2]*" /1000 cells)]"))+
   xlab("Sample")+
-  stat_summary(fun = mean, geom = "crossbar", width = 0.5)+
+  stat_summary(fun = mean, geom = "crossbar", width = 0.3)+
   stat_summary(fun.max = function(x) mean(x) + sd(x),
-               fun.min = function(x) mean(x) - sd(x), geom = "errorbar")+
-  geom_point(aes(x=Group, y = replicate_mean, fill = Date), color = "Black", size = 5, shape = 21)+
-  theme_minimal()+
+               fun.min = function(x) mean(x) - sd(x), geom = "errorbar", width = 0.3)+
+  geom_point(aes(x=Group, y = replicate_mean, fill = Date), color = "Black", size = 4, shape = 21)+
+  theme_bw()+
   theme(legend.position="bottom",     
         strip.text.x = element_text(size = 12, face = "bold"),
         strip.text.y = element_text(size = 12, face = "bold"))+
   scale_colour_brewer(palette = "Dark2")+
   scale_fill_brewer(palette = "Dark2")+
-  ggtitle("LOCR estimates")
+  ggtitle("LOCR estimates shown by well, replicate and sample")
+
+message("Figure description: Colors indicate replicates, large points represent the group mean of wells, the bold black line is the sample mean of wells, and the errorbars shows the sd of the well means for each group")
 ```
 
 
@@ -489,6 +544,54 @@ for (smpl in unique(dr_per$sample_id)) {
 }
 ```
 
+## Summary statistics for each sample
+```{r echo = FALSE}
+per_summary_stats <- dr_per %>% filter(is.out.p == FALSE) %>% 
+  group_by(sample_id, Well, Interval, Group) %>% 
+  summarise(well_mean = mean(OCR))%>% # Gives the mean value of each well withour outliers
+  group_by(Group, Interval) %>% # Gives the mean value of each sample without outliers
+  summarise(sample_mean = mean(well_mean),
+            well_mean,
+            Well)
+
+lper_summary_stats <- dr_per %>% filter(is.out.p == FALSE) %>% 
+  group_by(sample_id, Well, Interval, Group) %>% 
+  summarise(well_mean = mean(LOCR))%>% # Gives the mean value of each well withour outliers
+  group_by(Group, Interval) %>% # Gives the mean value of each sample without outliers
+  summarise(sample_mean = mean(well_mean),
+            well_mean,
+            Well)
+
+
+
+per_summary_stats %>% ggplot(mapping = aes(x = Interval, y = well_mean, group = Group)) +
+  geom_line(mapping = aes(x = Interval, y = sample_mean, group = Group), size = 0.2, color = "grey", position = position_dodge(width = 0.2) ) +
+  geom_point(mapping = aes(x = Interval, y = sample_mean, fill = Group), color = "black", shape = 21, size = 3, position = position_dodge(width = 0.2) )+
+  # stat_summary(fun = mean, geom = "crossbar", width = 0.1, aes(color = Group))+
+  stat_summary(fun.max = function(x) mean(x) + sd(x),
+               fun.min = function(x) mean(x) - sd(x), geom = "errorbar", width = 0.4, size = 0.5, aes(color = Group), position = position_dodge(width = 0.2) )+
+  scale_fill_brewer(palette = "Dark2")+
+  scale_color_brewer(palette = "Dark2")+
+  ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))+
+  # geom_jitter(dr_ocr)
+  theme_bw()+
+  ggtitle("PER estimates sample summary (Outliers removed)")
+
+lper_summary_stats %>% ggplot(mapping = aes(x = Interval, y = well_mean, group = Group)) +
+  geom_line(mapping = aes(x = Interval, y = sample_mean, group = Group), size = 0.2, color = "grey", position = position_dodge(width = 0.2) ) +
+  geom_point(mapping = aes(x = Interval, y = sample_mean, fill = Group), color = "black", shape = 21, size = 3, position = position_dodge(width = 0.2) )+
+  # stat_summary(fun = mean, geom = "crossbar", width = 0.1, aes(color = Group))+
+  stat_summary(fun.max = function(x) mean(x) + sd(x),
+               fun.min = function(x) mean(x) - sd(x), geom = "errorbar", width = 0.4, size = 0.5, aes(color = Group), position = position_dodge(width = 0.2) )+
+  scale_fill_brewer(palette = "Dark2")+
+  scale_color_brewer(palette = "Dark2")+
+  ylab(expression("Mean PER value [log10(pmol H"["+"]*" /1000 cells)]"))+
+  # geom_jitter(dr_ocr)
+  theme_bw()+
+  ggtitle("LPER estimates sample summary (Outliers removed)")
+
+```
+
 ## Bioenergetics and Estimates
 
 ```{r echo=FALSE}
@@ -545,17 +648,17 @@ per_stats %>% ggplot(aes(x=Group, y=well_mean)) +
   facet_wrap(~Interval, scales = "free")+
   ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))+
   xlab("Sample")+
-  stat_summary(fun = mean, geom = "crossbar", width = 0.5)+
+  stat_summary(fun = mean, geom = "crossbar", width = 0.3)+
   stat_summary(fun.max = function(x) mean(x) + sd(x),
-               fun.min = function(x) mean(x) - sd(x), geom = "errorbar")+
-  geom_point(aes(x=Group, y = replicate_mean, fill = Date), color = "Black", size = 5, shape = 21)+
-  theme_minimal()+
+               fun.min = function(x) mean(x) - sd(x), geom = "errorbar", width = 0.3)+
+  geom_point(aes(x=Group, y = replicate_mean, fill = Date), color = "Black", size = 4, shape = 21)+
+  theme_bw()+
   theme(legend.position="bottom",     
         strip.text.x = element_text(size = 12, face = "bold"),
         strip.text.y = element_text(size = 12, face = "bold"))+
   scale_colour_brewer(palette = "Dark2")+
   scale_fill_brewer(palette = "Dark2")+
-  ggtitle("PER estimates")
+  ggtitle("PER estimates shown by well, replicate and sample")
 
 
 lper_stats %>% ggplot(aes(x=Group, y=well_mean)) + 
@@ -563,17 +666,19 @@ lper_stats %>% ggplot(aes(x=Group, y=well_mean)) +
   facet_wrap(~Interval, scales = "free")+
   ylab(expression("Mean Log(PER) value [log(pmol H"["+"]*" /1000 cells)]"))+
   xlab("Sample")+
-  stat_summary(fun = mean, geom = "crossbar", width = 0.5)+
+  stat_summary(fun = mean, geom = "crossbar", width = 0.3)+
   stat_summary(fun.max = function(x) mean(x) + sd(x),
-               fun.min = function(x) mean(x) - sd(x), geom = "errorbar")+
-  geom_point(aes(x=Group, y = replicate_mean, fill = Date), color = "Black", size = 5, shape = 21)+
-  theme_minimal()+
+               fun.min = function(x) mean(x) - sd(x), geom = "errorbar", width = 0.3)+
+  geom_point(aes(x=Group, y = replicate_mean, fill = Date), color = "Black", size = 4, shape = 21)+
+  theme_bw()+
   theme(legend.position="bottom",     
         strip.text.x = element_text(size = 12, face = "bold"),
         strip.text.y = element_text(size = 12, face = "bold"))+
   scale_colour_brewer(palette = "Dark2")+
   scale_fill_brewer(palette = "Dark2")+
-  ggtitle("LPER estimates")
+  ggtitle("LPER estimates shown by well, replicate and sample")
+
+message("Figure description: Colors indicate replicates, large points represent the group mean of wells, the bold black line is the sample mean of wells, and the errorbars shows the sd of the well means for each group")
 ```
 
 
