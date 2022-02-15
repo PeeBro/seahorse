@@ -86,7 +86,7 @@ for (folder in knit_folders) {
 
 
 # Initialize the knitting process
-rmarkdown::render(here('Experiments', "OCR+PER-Pipeline-FOUR-INTERVALS.Rmd"), output_dir = OUTPUT_PATH)
+# rmarkdown::render(here('Experiments', "OCR+PER-Pipeline-FOUR-INTERVALS.Rmd"), output_dir = OUTPUT_PATH)
 ```
 
 # Overview of data
@@ -412,13 +412,19 @@ If you want to see or change how they are computed see the function compute_bioe
 # normal scale Bioenergetics
 
 n.bio <- melt(norm.be$bioenergetics)
+n.bio <- n.bio %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)),
+                           Group = substr(Sample, start = 1, stop = nchar(Sample)-19))
 
 n.bio %>%
   filter(variable != "Other") %>%
-  ggplot(aes(variable, value, fill = variable ))+
+  ggplot(aes(x = variable, y = value))+
   ggtitle("Difference based natural scale Bio-Energetics OCR")+
-  geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
-  geom_jitter(width = 0.1, show.legend = FALSE, size = 0.5 )+
+  # geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
+  geom_point(aes(fill = Group, shape = Date), size = 3, position = position_dodge(width = 0.2))+
+  scale_shape_manual(values= c(21,22))+
+  scale_color_brewer(palette = "Dark2")+
+  scale_fill_brewer(palette = "Dark2")+
+  guides(fill=guide_legend(override.aes=list(shape=21)))+
   xlab("Bio-Energetics")+
   ylab(" ")+
   theme_bw()
@@ -426,12 +432,18 @@ n.bio %>%
 
 # log scale Bioenergetics
 l.bio   <- melt(log.be$bioenergetics )
+l.bio <- l.bio %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)),
+                           Group = substr(Sample, start = 1, stop = nchar(Sample)-19))
+
 l.bio %>%
   filter(variable != "Other") %>%
   ggplot(aes(variable, value, fill = variable))+
   ggtitle("Ratio based log scale Bio-Energetics OCR (folds)")+
-  geom_boxplot( width = 0.5, outlier.size = -1, alpha = 0.7)+
-  geom_jitter( width = 0.1, show.legend = FALSE, size = 0.5 )+
+  geom_point(aes(fill = Group, shape = Date), size = 3, position = position_dodge(width = 0.2))+
+  scale_shape_manual(values= c(21,22))+
+  scale_color_brewer(palette = "Dark2")+
+  scale_fill_brewer(palette = "Dark2")+
+  guides(fill=guide_legend(override.aes=list(shape=21)))+
   xlab(" Log Bio-Energetics")+
   ylab(" ")+
   theme_bw()
@@ -690,25 +702,39 @@ message("Figure description: Colors indicate replicates, large points represent 
 # normal scale Bioenergetics
 
 n.bio.PER <- melt(norm.be.PER$bioenergetics)
+n.bio.PER <- n.bio.PER %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)),
+                           Group = substr(Sample, start = 1, stop = nchar(Sample)-19))
+
 n.bio.PER %>%
   filter(variable != "Other") %>%
   ggplot(aes(variable, value, fill = variable ))+
   ggtitle("Difference based natural scale Bio-Energetics PER")+
-  geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
-  geom_jitter(width = 0.1, show.legend = FALSE, size = 0.5 )+
+  geom_point(aes(fill = Group, shape = Date), size = 3, position = position_dodge(width = 0.2))+
+  scale_shape_manual(values= c(21,22))+
+  scale_color_brewer(palette = "Dark2")+
+  scale_fill_brewer(palette = "Dark2")+
+  guides(fill=guide_legend(override.aes=list(shape=21)))+
   xlab("Bio-Energetics")+
   ylab(" ")+
   theme_bw()
 
 
+
+
+
 # log scale Bioenergetics
 l.bio.PER   <- melt(log.be.PER$bioenergetics )
+l.bio.PER <- l.bio.PER %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)),
+                           Group = substr(Sample, start = 1, stop = nchar(Sample)-19))
 l.bio.PER %>%
   filter(variable != "Other") %>%
   ggplot(aes(variable, value, fill = variable ))+
   ggtitle("Difference based log scale Bio-Energetics PER")+
-  geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
-  geom_jitter(width = 0.1, show.legend = FALSE, size = 0.5 )+
+  geom_point(aes(fill = Group, shape = Date), size = 3, position = position_dodge(width = 0.2))+
+  scale_shape_manual(values= c(21,22))+
+  scale_color_brewer(palette = "Dark2")+
+  scale_fill_brewer(palette = "Dark2")+
+  guides(fill=guide_legend(override.aes=list(shape=21)))+
   xlab("Bio-Energetics")+
   ylab(" ")+
   theme_bw()
