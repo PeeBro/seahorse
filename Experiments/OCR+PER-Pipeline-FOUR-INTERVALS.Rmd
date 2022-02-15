@@ -86,7 +86,7 @@ for (folder in knit_folders) {
 
 
 # Initialize the knitting process
-# rmarkdown::render(here('Experiments', "OCR+PER-Pipeline-FOUR-INTERVALS.Rmd"), output_dir = OUTPUT_PATH)
+rmarkdown::render(here('Experiments', "OCR+PER-Pipeline-FOUR-INTERVALS.Rmd"), output_dir = OUTPUT_PATH)
 ```
 
 # Overview of data
