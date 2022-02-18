@@ -480,8 +480,8 @@ idfy_outlier <- function(DT, x, cut.well, cut.point ){
 }
 
 
-# -------------------------------------------------------------------------- COMPUTE BIOENERGETICS
-compute_bioenergetics_ <- function(dm_r, method) {
+# -------------------------------------------------------------------------- COMPUTE BIOENERGETICS FOR EACH REPLICATE
+compute_bioenergetics_replicate <- function(dm_r, method) {
   dr <- dm_r %>%
     filter(is.out.p == FALSE)
 
@@ -489,7 +489,7 @@ compute_bioenergetics_ <- function(dm_r, method) {
   # we are using median instead !!!
   estim_mean <- dr %>%
     group_by(sample_id, Interval) %>%
-    summarise(mean = median(x), SD = sd(x), SE = sd(x)/sqrt(n()), size = n(), CV = (SD/mean)*100 )
+    summarise(mean = mean(x), SD = sd(x), SE = sd(x)/sqrt(n()), size = n(), CV = (SD/mean)*100 )
 
   # form datafames
   estimates  <- as.data.frame(cast(estim_mean, sample_id~Interval, value = "mean"))
@@ -581,6 +581,218 @@ compute_bioenergetics_ <- function(dm_r, method) {
              log.Glyco.Rsrv.Cpcty  = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int1^2)/n.Int1))) %>%
       select(c("Sample", "log.Basal.PER", "log.Max.PER", "log.Glyco.Rsrv.Cpcty"))
 
+  }
+  return(list(bioenergetics = bio_e, standard.errors = st_errors, estimates = estim_mean ))
+}
+
+# -------------------------------------------------------------------------- COMPUTE BIOENERGETICS FOR EACH WELL
+compute_bioenergetics_well <- function(dm_r, method) {
+  dr <- dm_r %>%
+    filter(is.out.p == FALSE)
+  
+  dr$x <- dr[[method]]
+  # we are using median instead !!!
+  estim_mean <- dr %>%
+    group_by(sample_id, Interval, Well) %>%
+    summarise(mean = mean(x), SD = sd(x), SE = sd(x)/sqrt(n()), size = n(), CV = (SD/mean)*100 )
+  
+  # form datafames
+  estimates  <- as.data.frame(cast(estim_mean, sample_id + Well~Interval, value = "mean"))
+  deviations <- as.data.frame(cast(estim_mean, sample_id + Well~Interval, value = "SD"))
+  SErrs      <- as.data.frame(cast(estim_mean, sample_id + Well~Interval, value = "SE"))
+  numbers    <- as.data.frame(cast(estim_mean, sample_id + Well~Interval, value = "size"))
+  CVs        <- as.data.frame(cast(estim_mean, sample_id + Well~Interval, value = "CV"))
+  
+  # compute Bioenergetics according to the method used
+  
+  if (method == "OCR") {
+    # difference based bioenergetics
+    bio_e <- estimates %>% na.omit() %>% 
+      mutate(Sample           = sample_id,
+             Basal.Resp       = Int1 - Int4,
+             ATP.linked.Resp  = Int1 - Int2,
+             Proton.Leak      = Int2 - Int4,
+             Spare.Resp.Cpcty = Int3 - Int1,
+             Maximal.Resp     = Int3 - Int4,
+             Non.Mito.Resp    = Int4) %>%
+      select(-c("Int1", "Int2", "Int3", "Int4", "sample_id"))
+    # standard errors of mean differences
+    sd_n   <- cbind(sd = deviations, n = numbers)
+    st_errors <- sd_n %>%
+      mutate(Sample           = sd.sample_id,
+             Basal.Resp       = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)),
+             ATP.linked.Resp  = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
+             Proton.Leak      = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
+             Spare.Resp.Cpcty = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int1^2)/n.Int1)),
+             Maximal.Resp     = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int4^2)/n.Int4)),
+             Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
+      select(c("Sample","n.Well", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Spare.Resp.Cpcty", "Maximal.Resp", "Non.Mito.Resp"))
+    colnames(st_errors)[2] <- "Well"
+    
+  } else if (method == "LOCR") {
+    # Ratio based bioenergetics
+    bio_e <- estimates %>% na.omit() %>% 
+      mutate(Sample               = sample_id,
+             log.Basal.Resp       = Int1 - Int4,
+             log.ATP.linked.Resp  = Int1 - Int2,
+             log.Proton.Leak      = Int2 - Int4,
+             log.Spare.Resp.Cpcty = Int3 - Int1,
+             log.Maximal.Resp     = Int3 - Int4,
+             log.Non.Mito.Resp    = Int4) %>%
+      select(-c("Int1", "Int2", "Int3", "Int4", "sample_id"))
+    # standard errors of mean differences
+    sd_n   <- cbind(sd = deviations, n = numbers)
+    st_errors <- sd_n %>%
+      mutate(Sample               = sd.sample_id,
+             log.Basal.Resp       = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)),
+             log.ATP.linked.Resp  = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
+             log.Proton.Leak      = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
+             log.Spare.Resp.Cpcty = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int1^2)/n.Int1)),
+             log.Maximal.Resp     = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int4^2)/n.Int4)),
+             log.Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
+      select(c("Sample", "n.Well", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Spare.Resp.Cpcty",
+               "log.Maximal.Resp", "log.Non.Mito.Resp"))
+    colnames(st_errors)[2] <- "Well"
+    
+  } else if (method == "PER") {
+    bio_e <- estimates %>% na.omit() %>% 
+      mutate(Sample            = sample_id,
+             Basal.PER         = Int1,
+             Max.PER           = Int2,
+             Glyco.Rsrv.Cpcty  = Int2 - Int1) %>%
+      select(c("Sample", "Well", "Basal.PER", "Max.PER", "Glyco.Rsrv.Cpcty"))
+    
+    # standard errors of mean differences
+    sd_n   <- cbind(sd = deviations, n = numbers)
+    st_errors <- sd_n %>%
+      mutate(Sample            = sd.sample_id,
+             Basal.PER         = sqrt(((sd.Int1^2)/n.Int1)),
+             Max.PER           = sqrt(((sd.Int2^2)/n.Int2)),
+             Glyco.Rsrv.Cpcty  = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int1^2)/n.Int1))) %>%
+      select(c("Sample","n.Well", "Basal.PER", "Max.PER", "Glyco.Rsrv.Cpcty"))
+    colnames(st_errors)[2] <- "Well"
+  } else if (method == "LPER") {
+    bio_e <- estimates %>% na.omit() %>% 
+      mutate(Sample                = sample_id,
+             log.Basal.PER         = Int1,
+             log.Max.PER           = Int2,
+             log.Glyco.Rsrv.Cpcty  = Int2 - Int1) %>%
+      select(c("Sample", "Well", "log.Basal.PER", "log.Max.PER", "log.Glyco.Rsrv.Cpcty"))
+    
+    # standard errors of mean differences
+    sd_n   <- cbind(sd = deviations, n = numbers)
+    st_errors <- sd_n %>%
+      mutate(Sample                = sd.sample_id,
+             log.Basal.PER         = sqrt(((sd.Int1^2)/n.Int1)),
+             log.Max.PER           = sqrt(((sd.Int2^2)/n.Int2)),
+             log.Glyco.Rsrv.Cpcty  = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int1^2)/n.Int1))) %>%
+      select(c("Sample", "n.Well", "log.Basal.PER", "log.Max.PER", "log.Glyco.Rsrv.Cpcty"))
+    colnames(st_errors)[2] <- "Well"
+    
+  }
+  return(list(bioenergetics = bio_e, standard.errors = st_errors, estimates = estim_mean ))
+}
+# -------------------------------------------------------------------------- COMPUTE BIOENERGETICS FOR EACH SAMPLE
+compute_bioenergetics_sample <- function(dm_r, method) {
+  dr <- dm_r %>%
+    filter(is.out.p == FALSE)
+  
+  dr$x <- dr[[method]]
+  # we are using median instead !!!
+  estim_mean <- dr %>%
+    group_by(Group, Interval) %>%
+    summarise(mean = mean(x), SD = sd(x), SE = sd(x)/sqrt(n()), size = n(), CV = (SD/mean)*100 )
+  
+  # form datafames
+  estimates  <- as.data.frame(cast(estim_mean, Group~Interval, value = "mean"))
+  deviations <- as.data.frame(cast(estim_mean, Group~Interval, value = "SD"))
+  SErrs      <- as.data.frame(cast(estim_mean, Group~Interval, value = "SE"))
+  numbers    <- as.data.frame(cast(estim_mean, Group~Interval, value = "size"))
+  CVs        <- as.data.frame(cast(estim_mean, Group~Interval, value = "CV"))
+  
+  # compute Bioenergetics according to the method used
+  
+  if (method == "OCR") {
+    # difference based bioenergetics
+    bio_e <- estimates %>%
+      mutate(Sample           = Group,
+             Basal.Resp       = Int1 - Int4,
+             ATP.linked.Resp  = Int1 - Int2,
+             Proton.Leak      = Int2 - Int4,
+             Spare.Resp.Cpcty = Int3 - Int1,
+             Maximal.Resp     = Int3 - Int4,
+             Non.Mito.Resp    = Int4) %>%
+      select(-c("Int1", "Int2", "Int3", "Int4", "Group"))
+    # standard errors of mean differences
+    sd_n   <- cbind(sd = deviations, n = numbers)
+    st_errors <- sd_n %>%
+      mutate(Sample           = sd.Group,
+             Basal.Resp       = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)),
+             ATP.linked.Resp  = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
+             Proton.Leak      = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
+             Spare.Resp.Cpcty = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int1^2)/n.Int1)),
+             Maximal.Resp     = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int4^2)/n.Int4)),
+             Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
+      select(c("Sample", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Spare.Resp.Cpcty", "Maximal.Resp", "Non.Mito.Resp"))
+    
+    
+  } else if (method == "LOCR") {
+    # Ratio based bioenergetics
+    bio_e <- estimates %>%
+      mutate(Sample               = Group,
+             log.Basal.Resp       = Int1 - Int4,
+             log.ATP.linked.Resp  = Int1 - Int2,
+             log.Proton.Leak      = Int2 - Int4,
+             log.Spare.Resp.Cpcty = Int3 - Int1,
+             log.Maximal.Resp     = Int3 - Int4,
+             log.Non.Mito.Resp    = Int4) %>%
+      select(-c("Int1", "Int2", "Int3", "Int4", "Group"))
+    # standard errors of mean differences
+    sd_n   <- cbind(sd = deviations, n = numbers)
+    st_errors <- sd_n %>%
+      mutate(Sample               = sd.Group,
+             log.Basal.Resp       = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)),
+             log.ATP.linked.Resp  = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
+             log.Proton.Leak      = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
+             log.Spare.Resp.Cpcty = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int1^2)/n.Int1)),
+             log.Maximal.Resp     = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int4^2)/n.Int4)),
+             log.Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
+      select(c("Sample", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Spare.Resp.Cpcty",
+               "log.Maximal.Resp", "log.Non.Mito.Resp"))
+    
+  } else if (method == "PER") {
+    bio_e <- estimates %>%
+      mutate(Sample            = Group,
+             Basal.PER         = Int1,
+             Max.PER           = Int2,
+             Glyco.Rsrv.Cpcty  = Int2 - Int1) %>%
+      select(c("Sample", "Basal.PER", "Max.PER", "Glyco.Rsrv.Cpcty"))
+    
+    # standard errors of mean differences
+    sd_n   <- cbind(sd = deviations, n = numbers)
+    st_errors <- sd_n %>%
+      mutate(Sample            = sd.Group,
+             Basal.PER         = sqrt(((sd.Int1^2)/n.Int1)),
+             Max.PER           = sqrt(((sd.Int2^2)/n.Int2)),
+             Glyco.Rsrv.Cpcty  = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int1^2)/n.Int1))) %>%
+      select(c("Sample", "Basal.PER", "Max.PER", "Glyco.Rsrv.Cpcty"))
+  } else if (method == "LPER") {
+    bio_e <- estimates %>%
+      mutate(Sample                = Group,
+             log.Basal.PER         = Int1,
+             log.Max.PER           = Int2,
+             log.Glyco.Rsrv.Cpcty  = Int2 - Int1) %>%
+      select(c("Sample", "log.Basal.PER", "log.Max.PER", "log.Glyco.Rsrv.Cpcty"))
+    
+    # standard errors of mean differences
+    sd_n   <- cbind(sd = deviations, n = numbers)
+    st_errors <- sd_n %>%
+      mutate(Sample                = sd.Group,
+             log.Basal.PER         = sqrt(((sd.Int1^2)/n.Int1)),
+             log.Max.PER           = sqrt(((sd.Int2^2)/n.Int2)),
+             log.Glyco.Rsrv.Cpcty  = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int1^2)/n.Int1))) %>%
+      select(c("Sample", "log.Basal.PER", "log.Max.PER", "log.Glyco.Rsrv.Cpcty"))
+    
   }
   return(list(bioenergetics = bio_e, standard.errors = st_errors, estimates = estim_mean ))
 }
