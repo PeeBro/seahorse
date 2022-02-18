@@ -48,6 +48,7 @@ library(knitr)      # Used for tables
 library(kableExtra)
 library(shiny)
 library(ggbeeswarm)
+library(writexl)
 
 
 
@@ -89,6 +90,9 @@ for (folder in knit_folders) {
 rmarkdown::render(here('Experiments', "OCR+PER-Pipeline-FOUR-INTERVALS.Rmd"), output_dir = OUTPUT_PATH)
 ```
 
+<br>
+<br>
+
 # Overview of data
 Steps performed: <br>
 - Load data
@@ -99,6 +103,9 @@ data <- read_xlsx_set(INPUT_PATH, ".xlsx")
 dm <- data$rates
 
 ```
+
+<br>
+<br>
 
 # Wells excluded from the analysis
 Steps performed: <br>
@@ -155,6 +162,7 @@ data$Bad_Cells %>%
 
 <br>
 <br>
+<br>
 
 # OCR 
 ## Filter out irrelevant samples 
@@ -185,7 +193,9 @@ cat("Wells removed due lack of usable measurements (Less than six usable wells i
 cat("Wells removed because there are not four intervals: ", paste(unique(inter$sample_id), collapse = "\n"), sep = "\n")
 ```
 
-## Identify Outliers
+<br>
+
+## Identify and remove outliers
 Steps performed: <br>
 - Use an iterative process to remove outliers
 
@@ -201,7 +211,7 @@ dr_ocr <- idfy_sinleP_outlier(d_OCR, cut.point = 6, x = "LOCR")
 # clean enviroment
 rm(d_OCR)
 # write the data into file
-write_csv(dr_ocr, paste0(OUTPUT_PATH,"/Data_removed_OCR.csv"))
+write_xlsx(dr_ocr, paste0(OUTPUT_PATH,"/.Data_removed_OCR.xlsx"))
 ```
 
 ```{r echo=FALSE, warning=FALSE, echo=FALSE}
@@ -222,7 +232,9 @@ dr_ocr %>%
 
 ```
 
-## Print schemes of removed points for all samples
+<br>
+
+### Print schemes of removed points for all samples
 ```{r echo=FALSE, echo=FALSE, cache = TRUE}
 
 for (smpl in unique(dr_ocr$sample_id)) {
@@ -240,6 +252,10 @@ for (smpl in unique(dr_ocr$sample_id)) {
   print(plot +theme_bw())
 }
 ```
+
+<br>
+<br>
+<br>
 
 ## Summary statistics for each sample
 ```{r echo = FALSE}
@@ -291,12 +307,14 @@ locr_summary_stats %>% ggplot(mapping = aes(x = Interval, y = well_mean, group =
 
 **Figure description:** <br> Colored points are the group mean of wells, and the errorbars shows the sd of the well means for each group
 
-
-
+<br>
+<br>
+<br>
+<br>
 
 ## Bioenergetics and Estimates
 ### Estimates
-Estimates are taken by median of measurements from each interval in sample. Estimates are  stored together with other details about the intervals in files called <Method>-Estimated_values.csv in OUTPUT folder.
+Estimates are taken by median of measurements from each interval in sample. Estimates are  stored together with other details about the intervals in files called <Method>-Estimated_values.xlsx in OUTPUT folder.
 
 If you want to see or change how they are computed see the function compute_bioenergetics_ ()in file analysis_source_functions.R
 
@@ -309,11 +327,12 @@ norm.be.sample <- compute_bioenergetics_sample(dr_ocr, "OCR")
 log.be.sample <- compute_bioenergetics_sample(dr_ocr, "LOCR")
 
 
-write_csv(norm.be.replicate$estimates, paste0(OUTPUT_PATH,"/OCR-Estimated_values.csv"))
-write_csv(log.be.replicate$estimates, paste0(OUTPUT_PATH,"/LOCR-Estimates_values.csv"))
-write_csv(norm.be.replicate$bioenergetics, paste0(OUTPUT_PATH,"/OCR-BE-table.csv"))
-write_csv(log.be.replicate$bioenergetics, paste0(OUTPUT_PATH,"/LOCR-BE-table.csv"))
-
+write_xlsx(norm.be.well$estimates, paste0(OUTPUT_PATH,"/Estimated_values-OCR-well.xlsx"))
+write_xlsx(log.be.well$estimates, paste0(OUTPUT_PATH,"/Estimates_values-LOCR-well.xlsx"))
+write_xlsx(norm.be.replicate$estimates, paste0(OUTPUT_PATH,"/Estimated_values-OCR-replicates.xlsx"))
+write_xlsx(log.be.replicate$estimates, paste0(OUTPUT_PATH,"/Estimates_values-LOCR-replicates.xlsx"))
+write_xlsx(norm.be.sample$estimates, paste0(OUTPUT_PATH,"/Estimated_values-OCR-samples.xlsx"))
+write_xlsx(log.be.sample$estimates, paste0(OUTPUT_PATH,"/Estimates_values-LOCR-samples.xlsx"))
 ```
 
 ```{r echo=FALSE, echo=FALSE}
@@ -360,7 +379,7 @@ locr_stats <- dr_ocr %>% filter(is.out.p == FALSE) %>%
 
 
 
-```{r, echo = FALSE,  fig.width = 8 , fig.height = 8 }
+```{r, echo = FALSE,  fig.width = 8}
 ocr_stats %>% ggplot(aes(x=Group, y=well_mean)) + 
   geom_beeswarm(aes(color = Date), cex=2, dodge.width = 0)+
   facet_wrap(~Interval, scales = "free")+
@@ -398,58 +417,32 @@ locr_stats %>% ggplot(aes(x=Group, y=well_mean)) +
 
 **Figure description:** <br> Each point is a well average. Colors indicate replicates, large points represent the group mean of wells, the bold black line is the sample mean of wells, and the errorbars shows the sd of the well means for each group")
 
+<br>
+<br>
+<br>
 
-
-
-### Bioenergetics
+### Bioenergetics OCR
 Bioenergetics are computed from estimates, there there are two sets of bioenergetics provided.
 
-  1. Ratio Based, computed from log(OCR) estimates Located in OUTPUT/LogOCR-BioEnergetics.csv
+  1. Ratio Based, computed from log(OCR) estimates Located in OUTPUT/LogOCR-BioEnergetics.xlsx
 
-  2. Difference based, computed from OCR esimates Located in OUTPUT/OCR-BioEnergetics.csv
+  2. Difference based, computed from OCR esimates Located in OUTPUT/OCR-BioEnergetics.xlsx
 If you want to see or change how they are computed see the function compute_bioenergetics_() in file analysis_source_functions.R
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
 # normal scale Bioenergetics
 # Prepare data frames with well, replicate and sample averages
 
-n.bio.well <- melt(norm.be.well$bioenergetics)
-n.bio.well <- n.bio.well %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)),
-                                     Group = substr(Sample, start = 1, stop = nchar(Sample)-19))
-
-n.bio.replicate <- melt(norm.be.replicate$bioenergetics)
-n.bio.replicate <- n.bio.replicate %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)),
-                                               Group = substr(Sample, start = 1, stop = nchar(Sample)-19))
-
-
-n.bio.sample <- melt(norm.be.sample$bioenergetics)
-n.bio.sample.se <- melt(norm.be.sample$standard.errors)
-colnames(n.bio.sample.se)[3] <- "se"
-n.bio.sample <- merge(n.bio.sample,n.bio.sample.se)
-n.bio.sample <- n.bio.sample %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)))
+n.bio.well <- melt_bioenergetics_well(norm.be.well)
+n.bio.replicate <- melt_bioenergetics_replicate(norm.be.replicate)
+n.bio.sample <- melt_bioenergetics_sample(norm.be.sample)
 ```
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
-n.bio.well %>%
-  filter(variable != "Other") %>%
-  ggplot(aes(x = "", y = value))+
-  ggtitle("Difference based natural scale Bio-Energetics OCR")+
-  geom_beeswarm(aes(color = Date, shape = Group, group = Group), cex = 3, dodge.width = 0.8)+
-  geom_point(data = n.bio.replicate, mapping = aes(x = "", y = value, group = Group, fill = Date), 
-             color = "black", shape = 21, size = 5, 
-             position = position_dodge(width = 0.8))+
-  geom_point(data = n.bio.sample, mapping = aes(x = "", y = value, group = Sample), 
-             fill = "black", color = "red", shape = 21, size = 1.5,
-             position = position_dodge(width = 0.8))+
-  geom_errorbar(data = n.bio.sample, aes(ymin=value-se, ymax=value+se, group = Sample), width=0.5, size = 0.8,
-                 position=position_dodge(0.8))+
-  scale_shape_manual(values= c(15,8, 17,3))+
-  scale_color_brewer(palette = "Dark2")+
-  scale_fill_brewer(palette = "Dark2")+
-  facet_wrap(~variable, scales = "free")+
-  xlab("Bio-Energetics")+
-  ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))+
-  theme_bw()
+plot <- plot1(n.bio.well,n.bio.replicate, n.bio.sample) + 
+  ggtitle("Plot type 1A: Difference based natural scale Bio-Energetics OCR") + 
+  ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))
+plot
 ```
 
 
@@ -461,56 +454,33 @@ Errorbars and mean (black): Sample mean + errorbars indicating SE. <br>
 Small symbols: All measurements are grouped by well, sample id (group name + date) and interval. This means we calculate the OCR estimates and bioenegetics for each individual well. Be aware that due to outlier removal of measurements, some bioenergetics can't be calculated for all wells. <br>
 Large dots: All measurements are grouped by each interval and sample id (group name + date). This means that we pool all wells for each replicate, calculate the average OCR values for each interval and calculate the bioenergetics. <br>
 Errorbars and mean: All measurements are pooled for each sample/plate across all replicates and the average OCR values are calculated for each interval, before the bioenergetics are calculated.
+
 <br>
 <br>
 <br>
 <br>
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
-n.bio.replicate %>%
-  filter(variable != "Other") %>%
-  ggplot(aes(x = variable, y = value, group = Group))+
-  ggtitle("Difference based natural scale Bio-Energetics OCR")+
-  # geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
-  geom_point(aes(fill = Group, shape = Date), size = 3, position = position_dodge(width = 0.6))+
-  geom_point(data = n.bio.sample, mapping = aes(x = variable, y = value, group = Sample), color = "black", size = 1.5,
-             position = position_dodge(width = 0.6))+
-  geom_errorbar(data = n.bio.sample, aes(ymin=value-se, ymax=value+se, group = Sample), width=0.5, size = 0.8,
-                 position=position_dodge(0.6))+
-  scale_shape_manual(values= c(21,22))+
-  scale_color_brewer(palette = "Dark2")+
-  scale_fill_brewer(palette = "Dark2")+
-  guides(fill=guide_legend(override.aes=list(shape=21)))+
-  xlab("Bio-Energetics")+
-  ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))+
-  theme_bw()
+plot <- plot2(n.bio.replicate, n.bio.sample)+
+  ggtitle("Plot type 2A: Difference based natural scale Bio-Energetics OCR")+
+  ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))
+plot
 ```
 
 **Figure description:** <br> The plot shows the average bioenergetics estimates for the replicates and the entire samples. Colors indicate the individual samples (identified by sample name), and the shape indicate the time of analysis i.e. replicates. <br>
 **How the averages are calculated:** <br> 
 All measurements for each replicate is pooled, the average OCR estimates are calculated for each interval and from that the bioenergetics are calculated.
+
 <br>
 <br>
 <br>
 <br>
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
-n.bio.well %>%
-  filter(variable != "Other") %>%
-  ggplot(aes(x = variable, y = value))+
-  ggtitle("Difference based natural scale Bio-Energetics OCR")+
-  geom_boxplot(aes(fill = Group, color = Group), alpha = 0.5, position = position_dodge(width = 0.6),)+
-  geom_point(aes(color = Group), position = position_dodge(width = 0.6), size = 1)+
-  # geom_point(data = n.bio.sample, mapping = aes(x = variable, y = value, group = Sample), color = "black", size = 3,
-  #            position = position_dodge(width = 0.6))+
-  # geom_errorbar(data = n.bio.sample, aes(ymin=value-se, ymax=value+se, group = Sample), width=0.5, size = 0.8,
-  #                position=position_dodge(0.6))+
-  scale_color_brewer(palette = "Dark2")+
-  scale_fill_brewer(palette = "Dark2")+
-  # guides(fill=guide_legend(override.aes=list(shape=21)))+
-  xlab("Bio-Energetics")+
-  ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))+
-  theme_bw()
+plot <- plot3(n.bio.well) +
+  ggtitle("Plot type 3A: Difference based natural scale Bio-Energetics OCR")+
+  ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))
+plot
 ```
 
 **Figure description:** <br> 
@@ -518,49 +488,27 @@ Shows the bioenergetic estimates for each well. <br>
 **Which data is used:** <br> 
 All measurements are grouped by well, sample id (group name + date) and interval. This means we calculate the bioenegetics for each individual well. Be aware that due to outlier removal of measurements, some bioenergetics can't be calculated for all wells.
 
-### Log OCR
+<br>
+<br>
+<br>
+
+### Bioenergetics Log OCR
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
 # log scale Bioenergetics
 # Prepare data frames with well, replicate and sample averages
 
-l.bio.well <- melt(log.be.well$bioenergetics)
-l.bio.well <- l.bio.well %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)),
-                                     Group = substr(Sample, start = 1, stop = nchar(Sample)-19))
-
-l.bio.replicate <- melt(log.be.replicate$bioenergetics)
-l.bio.replicate <- l.bio.replicate %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)),
-                                               Group = substr(Sample, start = 1, stop = nchar(Sample)-19))
-
-
-l.bio.sample <- melt(log.be.sample$bioenergetics)
-l.bio.sample.se <- melt(log.be.sample$standard.errors)
-colnames(l.bio.sample.se)[3] <- "se"
-l.bio.sample <- merge(l.bio.sample,l.bio.sample.se)
-l.bio.sample <- l.bio.sample %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)))
+l.bio.well <- melt_bioenergetics_well(log.be.well)
+l.bio.replicate <- melt_bioenergetics_replicate(log.be.replicate)
+l.bio.sample <- melt_bioenergetics_sample(log.be.sample)
 ```
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
-l.bio.well %>%
-  filter(variable != "Other") %>%
-  ggplot(aes(x = "", y = value))+
-  ggtitle("Ratio based log scale Bio-Energetics OCR (folds)")+
-  geom_beeswarm(aes(color = Date, shape = Group, group = Group), cex = 3, dodge.width = 0.8)+
-  geom_point(data = l.bio.replicate, mapping = aes(x = "", y = value, group = Group, fill = Date), 
-             color = "black", shape = 21, size = 5, 
-             position = position_dodge(width = 0.8))+
-  geom_point(data = l.bio.sample, mapping = aes(x = "", y = value, group = Sample), 
-             fill = "black", color = "red", shape = 21, size = 1.5,
-             position = position_dodge(width = 0.8))+
-  geom_errorbar(data = l.bio.sample, aes(ymin=value-se, ymax=value+se, group = Sample), width=0.5, size = 0.8,
-                 position=position_dodge(0.8))+
-  scale_shape_manual(values= c(15,8, 17,3))+
-  scale_color_brewer(palette = "Dark2")+
-  scale_fill_brewer(palette = "Dark2")+
-  facet_wrap(~variable, scales = "free")+
-  xlab("Bio-Energetics")+
-  ylab(expression("Mean OCR value [log10(pmol O"[2]*" /1000 cells)]"))+
-  theme_bw()
+plot <- plot1(l.bio.well,l.bio.replicate, l.bio.sample) + 
+  ggtitle("Plot type 1B: Ratio based log scale Bio-Energetics OCR (folds)")+
+  ylab(expression("Mean OCR value [log10(pmol O"[2]*" /1000 cells)]"))
+plot
+
 ```
 
 
@@ -572,62 +520,41 @@ Errorbars and mean (black): Sample mean + errorbars indicating SE. <br>
 Small symbols: All measurements are grouped by well, sample id (group name + date) and interval. This means we calculate the LOCR estimates and bioenergetics for each individual well. Be aware that due to outlier removal of measurements, some bioenergetics can't be calculated for all wells. <br>
 Large dots: All measurements are grouped by each interval and sample id (group name + date). This means that we pool all wells for each replicate, calculate the average LOCR values for each interval and calculate the bioenergetics. <br>
 Errorbars and mean: All measurements are pooled for each sample/plate across all replicates and the average OCR values are calculated for each interval, before the bioenergetics are calculated.
+
 <br>
 <br>
 <br>
 <br>
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
-l.bio.replicate %>%
-  filter(variable != "Other") %>%
-  ggplot(aes(x = variable, y = value, group = Group))+
-  ggtitle("Ratio based log scale Bio-Energetics OCR (folds)")+
-  # geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
-  geom_point(aes(fill = Group, shape = Date), size = 3, position = position_dodge(width = 0.6))+
-  geom_point(data = l.bio.sample, mapping = aes(x = variable, y = value, group = Sample), color = "black", size = 1.5,
-             position = position_dodge(width = 0.6))+
-  geom_errorbar(data = l.bio.sample, aes(ymin=value-se, ymax=value+se, group = Sample), width=0.5, size = 0.8,
-                 position=position_dodge(0.6))+
-  scale_shape_manual(values= c(21,22))+
-  scale_color_brewer(palette = "Dark2")+
-  scale_fill_brewer(palette = "Dark2")+
-  guides(fill=guide_legend(override.aes=list(shape=21)))+
-  xlab("Bio-Energetics")+
-  ylab(expression("Mean OCR value [log10(pmol O"[2]*" /1000 cells)]"))+
-  theme_bw()
+
+plot <- plot2(l.bio.replicate, l.bio.sample)+
+  ggtitle("Plot type 2B: Ratio based log scale Bio-Energetics OCR (folds)")+
+  ylab(expression("Mean OCR value [log10(pmol O"[2]*" /1000 cells)]"))
+plot
 ```
 
 **Figure description:** <br> The plot shows the average bioenergetics estimates for the replicates and the entire samples. Colors indicate the individual samples (identified by sample name), and the shape indicate the time of analysis i.e. replicates. <br>
 **How the averages are calculated:** <br> 
 All measurements for each replicate is pooled, the average LOCR estimates are calculated for each interval and from that the bioenergetics are calculated.
+
 <br>
 <br>
 <br>
 <br>
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
-l.bio.well %>%
-  filter(variable != "Other") %>%
-  ggplot(aes(x = variable, y = value))+
-  ggtitle("Ratio based log scale Bio-Energetics OCR (folds)")+
-  geom_boxplot(aes(fill = Group, color = Group), alpha = 0.5, position = position_dodge(width = 0.6),)+
-  geom_point(aes(color = Group), position = position_dodge(width = 0.6), size = 1)+
-  # geom_point(data = n.bio.sample, mapping = aes(x = variable, y = value, group = Sample), color = "black", size = 3,
-  #            position = position_dodge(width = 0.6))+
-  # geom_errorbar(data = n.bio.sample, aes(ymin=value-se, ymax=value+se, group = Sample), width=0.5, size = 0.8,
-  #                position=position_dodge(0.6))+
-  scale_color_brewer(palette = "Dark2")+
-  scale_fill_brewer(palette = "Dark2")+
-  # guides(fill=guide_legend(override.aes=list(shape=21)))+
-  xlab("Bio-Energetics")+
-  ylab(expression("Mean OCR value [log10(pmol O"[2]*" /1000 cells)]"))+
-  theme_bw()
+plot <- plot3(l.bio.well) +
+  ggtitle("Plot type 3B: Ratio based log scale Bio-Energetics OCR (folds)")+
+  ylab(expression("Mean OCR value [log10(pmol O"[2]*" /1000 cells)]"))
+plot
 ```
 
 **Figure description:** <br> 
 Shows the bioenergetic estimates for each well. <br>
 **Which data is used:** <br> 
 All measurements are grouped by well, sample id (group name + date) and interval. This means we calculate the bioenegetics for each individual well. Be aware that due to outlier removal of measurements, some bioenergetics can't be calculated for all wells.
+
 <br>
 <br>
 <br>
@@ -635,18 +562,14 @@ All measurements are grouped by well, sample id (group name + date) and interval
 
 ```{r echo=FALSE}
 # write difference based bioenergetics
-# uncomment and export be.er if you want to get standard errors of bioenergetics
-# st.err <- melt(norm.be$standard.errors, value.name = "SE", variable.name = "Bio.e" )
-# be.er  <- left_join(n.bio, st.err, by = c("Sample", "variable"))
-# be.er  <- arrange(be.er, Sample)
-write_csv(n.bio.replicate, paste0(OUTPUT_PATH,"/OCR-BioEnergetics.csv"))
+write_xlsx(n.bio.well, paste0(OUTPUT_PATH,"/BioEnergetics-OCR-well.xlsx"))
+write_xlsx(n.bio.replicate, paste0(OUTPUT_PATH,"/BioEnergetics-OCR-replicate.xlsx"))
+write_xlsx(n.bio.sample, paste0(OUTPUT_PATH,"/BioEnergetics-OCR-sample.xlsx"))
 
 # write ratio based bienergetics
-# # uncomment and export be.er if you want to get standard errors of bioenergetics
-# st.err <- melt(log.be$standard.errors, value.name = "SE", variable.name = "variable" )
-# be.er  <- left_join(l.bio, st.err, by = c("Sample", "variable"))
-# be.er <- arrange(be.er, Sample)
-write_csv(l.bio.replicate, paste0(OUTPUT_PATH,"/LogOCR-BioEnergetics.csv"))
+write_xlsx(l.bio.well, paste0(OUTPUT_PATH,"/BioEnergetics-LOCR-well.xlsx"))
+write_xlsx(l.bio.replicate, paste0(OUTPUT_PATH,"/BioEnergetics-LOCR-replicate.xlsx"))
+write_xlsx(l.bio.sample, paste0(OUTPUT_PATH,"/BioEnergetics-LOCR-sample.xlsx"))
 
 
 ```
@@ -658,8 +581,12 @@ l.bio.replicate[1:4,] %>%
   kable_styling(full_width = F)
 ```
 
-# PER
+<br>
+<br>
+<br>
+<br>
 
+# PER
 ## Filter out irrelevant samples
 
 ```{r echo=FALSE, message = FALSE}
@@ -686,7 +613,7 @@ cat("Wells removed due lack of usable measurements (Less than six usable wells i
 cat("Wells removed because there are not four intervals: ", paste(unique(inter$sample_id), collapse = "\n"), sep = "\n")
 ```
 
-## Remove outliers
+## Identify and remove outliers
 ```{r echo=FALSE, echo=FALSE}
 # Identify Outliars
 # DT = loaded dataframe
@@ -696,7 +623,7 @@ cat("Wells removed because there are not four intervals: ", paste(unique(inter$s
 
 dr_per <- idfy_sinleP_outlier(DT = d_PER, cut.point = 5, x = "PER" )  # could Print arguments
 # write the data into file
-write_csv(dr_per, paste0(OUTPUT_PATH,"/Data_removed_PER.csv"))
+write_xlsx(dr_per, paste0(OUTPUT_PATH,"/.Data_removed_PER.xlsx"))
 ```
 
 ```{r echo=FALSE, warning=FALSE, echo=FALSE}
@@ -717,8 +644,9 @@ dr_per %>%
 
 ```
 
+<br>
 
-## Print schemes of removed points for all samples
+### Print schemes of removed points for all samples
 ```{r echo=FALSE}
 ylim_low <- min(dr_per$PER) #write - x where x is a number to adjust the starting point of the y axis
 ylim_high <- max(dr_per$PER)
@@ -736,6 +664,10 @@ for (smpl in unique(dr_per$sample_id)) {
   print(plot +theme_bw())
 }
 ```
+
+<br>
+<br>
+<br>
 
 ## Summary statistics for each sample
 ```{r echo = FALSE}
@@ -783,7 +715,12 @@ lper_summary_stats %>% ggplot(mapping = aes(x = Interval, y = well_mean, group =
 
 ```
 
+<br>
+<br>
+<br>
+
 ## Bioenergetics and Estimates
+### Estimates
 
 ```{r echo=FALSE}
 norm.be.PER.well <- compute_bioenergetics_well(dr_per, "PER")
@@ -793,12 +730,14 @@ log.be.PER.replicate  <- compute_bioenergetics_replicate(dr_per, "LPER")
 norm.be.PER.sample <- compute_bioenergetics_sample(dr_per, "PER")
 log.be.PER.sample <- compute_bioenergetics_sample(dr_per, "LPER")
 
-write_csv(norm.be.PER.replicate$estimates, paste0(OUTPUT_PATH,"/PER-Estimated_values.csv"))
-write_csv(log.be.PER.replicate$estimates, paste0(OUTPUT_PATH,"/LPER-Estimated_values.csv"))
-write_csv(norm.be.PER.replicate$bioenergetics, paste0(OUTPUT_PATH,"/PER-BE-table.csv"))
-write_csv(log.be.PER.replicate$bioenergetics, paste0(OUTPUT_PATH,"/LPER-BE-table.csv"))
+
+write_xlsx(norm.be.PER.well$estimates, paste0(OUTPUT_PATH,"/Estimated_values-PER-well.xlsx"))
+write_xlsx(log.be.PER.well$estimates, paste0(OUTPUT_PATH,"/Estimates_values-LPER-well.xlsx"))
+write_xlsx(norm.be.PER.replicate$estimates, paste0(OUTPUT_PATH,"/Estimated_values-PER-replicates.xlsx"))
+write_xlsx(log.be.PER.replicate$estimates, paste0(OUTPUT_PATH,"/Estimates_values-LPER-replicates.xlsx"))
+write_xlsx(norm.be.PER.sample$estimates, paste0(OUTPUT_PATH,"/Estimated_values-PER-samples.xlsx"))
+write_xlsx(log.be.PER.sample$estimates, paste0(OUTPUT_PATH,"/Estimates_values-LPER-samples.xlsx"))
 ```
-### Estimates
 
 ```{r, echo = FALSE}
 # We need a different bioenergetics calculation to make the plots. The values calculated above is for each sample in each interval. We also need data for each well
@@ -837,7 +776,7 @@ lper_stats <- dr_per %>% filter(is.out.p == FALSE) %>%
 
 
 
-```{r, echo = FALSE, fig.width = 8 , fig.height = 8 }
+```{r, echo = FALSE, fig.width = 8}
 per_stats %>% ggplot(aes(x=Group, y=well_mean)) + 
   geom_beeswarm(aes(color = Date), cex=2, dodge.width = 0)+
   facet_wrap(~Interval, scales = "free")+
@@ -872,55 +811,33 @@ lper_stats %>% ggplot(aes(x=Group, y=well_mean)) +
   scale_colour_brewer(palette = "Dark2")+
   scale_fill_brewer(palette = "Dark2")+
   ggtitle("LPER estimates shown by well, replicate and sample")
-
-message("Figure description: Colors indicate replicates, large points represent the group mean of wells, the bold black line is the sample mean of wells, and the errorbars shows the sd of the well means for each group")
 ```
 
+**Figure description:** <br>
+Colors indicate replicates, large points represent the group mean of wells, the bold black line is the sample mean of wells, and the errorbars shows the sd of the well means for each group.
 
+<br>
+<br>
+<br>
 
-### Bioenergetics
+### Bioenergetics PER
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
 # normal scale Bioenergetics
 # Prepare data frames with well, replicate and sample averages
 
-n.bio.PER.well <- melt(norm.be.PER.well$bioenergetics)
-n.bio.PER.well <- n.bio.PER.well %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)),
-                                     Group = substr(Sample, start = 1, stop = nchar(Sample)-19))
-
-n.bio.PER.replicate <- melt(norm.be.PER.replicate$bioenergetics)
-n.bio.PER.replicate <- n.bio.PER.replicate %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)),
-                                               Group = substr(Sample, start = 1, stop = nchar(Sample)-19))
-
-
-n.bio.PER.sample <- melt(norm.be.PER.sample$bioenergetics)
-n.bio.PER.sample.se <- melt(norm.be.PER.sample$standard.errors)
-colnames(n.bio.PER.sample.se)[3] <- "se"
-n.bio.PER.sample <- merge(n.bio.PER.sample,n.bio.PER.sample.se)
-n.bio.PER.sample <- n.bio.PER.sample %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)))
+n.bio.PER.well <- melt_bioenergetics_well(norm.be.PER.well)
+n.bio.PER.replicate <- melt_bioenergetics_replicate(norm.be.PER.replicate)
+n.bio.PER.sample <- melt_bioenergetics_sample(norm.be.PER.sample)
 ```
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
-n.bio.PER.well %>%
-  filter(variable != "Other") %>%
-  ggplot(aes(x = "", y = value))+
-  ggtitle("Difference based natural scale Bio-Energetics PER")+
-  geom_beeswarm(aes(color = Date, shape = Group, group = Group), cex = 3, dodge.width = 0.8)+
-  geom_point(data = n.bio.PER.replicate, mapping = aes(x = "", y = value, group = Group, fill = Date), 
-             color = "black", shape = 21, size = 5, 
-             position = position_dodge(width = 0.8))+
-  geom_point(data = n.bio.PER.sample, mapping = aes(x = "", y = value, group = Sample), 
-             fill = "black", color = "red", shape = 21, size = 1.5,
-             position = position_dodge(width = 0.8))+
-  geom_errorbar(data = n.bio.PER.sample, aes(ymin=value-se, ymax=value+se, group = Sample), width=0.5, size = 0.8,
-                 position=position_dodge(0.8))+
-  scale_shape_manual(values= c(15,8, 17,3))+
-  scale_color_brewer(palette = "Dark2")+
-  scale_fill_brewer(palette = "Dark2")+
-  facet_wrap(~variable, scales = "free")+
-  xlab("Bio-Energetics")+
-  ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))+
-  theme_bw()
+plot <- plot1(n.bio.PER.well,n.bio.PER.replicate, n.bio.PER.sample) + 
+  ggtitle("Plot type 1A: Difference based natural scale Bio-Energetics PER")+
+  ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))
+plot
+
+
 ```
 
 
@@ -932,56 +849,33 @@ Errorbars and mean (black): Sample mean + errorbars indicating SE. <br>
 Small symbols: All measurements are grouped by well, sample id (group name + date) and interval. This means we calculate the PER estimates and bioenegetics for each individual well. Be aware that due to outlier removal of measurements, some bioenergetics can't be calculated for all wells. <br>
 Large dots: All measurements are grouped by each interval and sample id (group name + date). This means that we pool all wells for each replicate, calculate the average PER values for each interval and calculate the bioenergetics. <br>
 Errorbars and mean: All measurements are pooled for each sample/plate across all replicates and the average PER values are calculated for each interval, before the bioenergetics are calculated.
+
 <br>
 <br>
 <br>
 <br>
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
-n.bio.PER.replicate %>%
-  filter(variable != "Other") %>%
-  ggplot(aes(x = variable, y = value, group = Group))+
-  ggtitle("Difference based natural scale Bio-Energetics PER")+
-  # geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
-  geom_point(aes(fill = Group, shape = Date), size = 3, position = position_dodge(width = 0.6))+
-  geom_point(data = n.bio.PER.sample, mapping = aes(x = variable, y = value, group = Sample), color = "black", size = 1.5,
-             position = position_dodge(width = 0.6))+
-  geom_errorbar(data = n.bio.PER.sample, aes(ymin=value-se, ymax=value+se, group = Sample), width=0.5, size = 0.8,
-                 position=position_dodge(0.6))+
-  scale_shape_manual(values= c(21,22))+
-  scale_color_brewer(palette = "Dark2")+
-  scale_fill_brewer(palette = "Dark2")+
-  guides(fill=guide_legend(override.aes=list(shape=21)))+
-  xlab("Bio-Energetics")+
-  ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))+
-  theme_bw()
+plot <- plot2(n.bio.PER.replicate, n.bio.PER.sample)+
+  ggtitle("Plot type 2A: Difference based natural scale Bio-Energetics PER")+
+  ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))
+plot
 ```
 
 **Figure description:** <br> The plot shows the average bioenergetics estimates for the replicates and the entire samples. Colors indicate the individual samples (identified by sample name), and the shape indicate the time of analysis i.e. replicates. <br>
 **How the averages are calculated:** <br> 
 All measurements for each replicate is pooled, the average PER estimates are calculated for each interval and from that the bioenergetics are calculated.
+
 <br>
 <br>
 <br>
 <br>
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
-n.bio.PER.well %>%
-  filter(variable != "Other") %>%
-  ggplot(aes(x = variable, y = value))+
-  ggtitle("Difference based natural scale Bio-Energetics PER")+
-  geom_boxplot(aes(fill = Group, color = Group), alpha = 0.5, position = position_dodge(width = 0.6),)+
-  geom_point(aes(color = Group), position = position_dodge(width = 0.6), size = 1)+
-  # geom_point(data = n.bio.sample, mapping = aes(x = variable, y = value, group = Sample), color = "black", size = 3,
-  #            position = position_dodge(width = 0.6))+
-  # geom_errorbar(data = n.bio.sample, aes(ymin=value-se, ymax=value+se, group = Sample), width=0.5, size = 0.8,
-  #                position=position_dodge(0.6))+
-  scale_color_brewer(palette = "Dark2")+
-  scale_fill_brewer(palette = "Dark2")+
-  # guides(fill=guide_legend(override.aes=list(shape=21)))+
-  xlab("Bio-Energetics")+
-  ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))+
-  theme_bw()
+plot <- plot3(n.bio.PER.well) +
+  ggtitle("Plot type 3A: Difference based natural scale Bio-Energetics PER")+
+  ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))
+plot
 ```
 
 **Figure description:** <br> 
@@ -989,49 +883,27 @@ Shows the bioenergetic estimates for each well. <br>
 **Which data is used:** <br> 
 All measurements are grouped by well, sample id (group name + date) and interval. This means we calculate the bioenegetics for each individual well. Be aware that due to outlier removal of measurements, some bioenergetics can't be calculated for all wells.
 
-### Log PER
+<br>
+<br>
+<br>
+<br>
+
+### Bioenergetics Log PER
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
 # log scale Bioenergetics
 # Prepare data frames with well, replicate and sample averages
 
-l.bio.PER.well <- melt(log.be.PER.well$bioenergetics)
-l.bio.PER.well <- l.bio.PER.well %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)),
-                                     Group = substr(Sample, start = 1, stop = nchar(Sample)-19))
-
-l.bio.PER.replicate <- melt(log.be.PER.replicate$bioenergetics)
-l.bio.PER.replicate <- l.bio.PER.replicate %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)),
-                                               Group = substr(Sample, start = 1, stop = nchar(Sample)-19))
-
-
-l.bio.PER.sample <- melt(log.be.PER.sample$bioenergetics)
-l.bio.PER.sample.se <- melt(log.be.PER.sample$standard.errors)
-colnames(l.bio.PER.sample.se)[3] <- "se"
-l.bio.PER.sample <- merge(l.bio.PER.sample,l.bio.PER.sample.se)
-l.bio.PER.sample <- l.bio.PER.sample %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)))
+l.bio.PER.well <- melt_bioenergetics_well(log.be.PER.well)
+l.bio.PER.replicate <- melt_bioenergetics_replicate(log.be.PER.replicate)
+l.bio.PER.sample <- melt_bioenergetics_sample(log.be.PER.sample)
 ```
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
-l.bio.PER.well %>%
-  filter(variable != "Other") %>%
-  ggplot(aes(x = "", y = value))+
-  ggtitle("Ratio based log scale Bio-Energetics PER (folds)")+
-  geom_beeswarm(aes(color = Date, shape = Group, group = Group), cex = 3, dodge.width = 0.8)+
-  geom_point(data = l.bio.PER.replicate, mapping = aes(x = "", y = value, group = Group, fill = Date), 
-             color = "black", shape = 21, size = 5, 
-             position = position_dodge(width = 0.8))+
-  geom_point(data = l.bio.PER.sample, mapping = aes(x = "", y = value, group = Sample), 
-             fill = "black", color = "red", shape = 21, size = 1.5,
-             position = position_dodge(width = 0.8))+
-  geom_errorbar(data = l.bio.PER.sample, aes(ymin=value-se, ymax=value+se, group = Sample), width=0.5, size = 0.8,
-                 position=position_dodge(0.8))+
-  scale_shape_manual(values= c(15,8, 17,3))+
-  scale_color_brewer(palette = "Dark2")+
-  scale_fill_brewer(palette = "Dark2")+
-  facet_wrap(~variable, scales = "free")+
-  xlab("Bio-Energetics")+
-  ylab(expression("Mean Log(PER) value [log(pmol H"["+"]*" /1000 cells)]"))+
-  theme_bw()
+plot <- plot1(l.bio.PER.well,l.bio.PER.replicate, l.bio.PER.sample) + 
+  ggtitle("Plot type 1B: Ratio based log scale Bio-Energetics PER (folds)")+
+  ylab(expression("Mean Log(PER) value [log(pmol H"["+"]*" /1000 cells)]"))
+plot
 ```
 
 
@@ -1043,85 +915,58 @@ Errorbars and mean (black): Sample mean + errorbars indicating SE. <br>
 Small symbols: All measurements are grouped by well, sample id (group name + date) and interval. This means we calculate the LPER estimates and bioenergetics for each individual well. Be aware that due to outlier removal of measurements, some bioenergetics can't be calculated for all wells. <br>
 Large dots: All measurements are grouped by each interval and sample id (group name + date). This means that we pool all wells for each replicate, calculate the average LPER values for each interval and calculate the bioenergetics. <br>
 Errorbars and mean: All measurements are pooled for each sample/plate across all replicates and the average PER values are calculated for each interval, before the bioenergetics are calculated.
+
 <br>
 <br>
 <br>
 <br>
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
-l.bio.PER.replicate %>%
-  filter(variable != "Other") %>%
-  ggplot(aes(x = variable, y = value, group = Group))+
-  ggtitle("Ratio based log scale Bio-Energetics PER (folds)")+
-  # geom_boxplot(width = 0.5, outlier.size = -1, alpha = 0.7)+
-  geom_point(aes(fill = Group, shape = Date), size = 3, position = position_dodge(width = 0.6))+
-  geom_point(data = l.bio.PER.sample, mapping = aes(x = variable, y = value, group = Sample), color = "black", size = 1.5,
-             position = position_dodge(width = 0.6))+
-  geom_errorbar(data = l.bio.PER.sample, aes(ymin=value-se, ymax=value+se, group = Sample), width=0.5, size = 0.8,
-                 position=position_dodge(0.6))+
-  scale_shape_manual(values= c(21,22))+
-  scale_color_brewer(palette = "Dark2")+
-  scale_fill_brewer(palette = "Dark2")+
-  guides(fill=guide_legend(override.aes=list(shape=21)))+
-  xlab("Bio-Energetics")+
-  ylab(expression("Mean Log(PER) value [log(pmol H"["+"]*" /1000 cells)]"))+
-  theme_bw()
+plot <- plot2(l.bio.PER.replicate, l.bio.PER.sample)+
+  ggtitle("Plot type 2B: Ratio based log scale Bio-Energetics PER (folds)")+
+  ylab(expression("Mean Log(PER) value [log(pmol H"["+"]*" /1000 cells)]"))
+plot
 ```
 
 **Figure description:** <br> The plot shows the average bioenergetics estimates for the replicates and the entire samples. Colors indicate the individual samples (identified by sample name), and the shape indicate the time of analysis i.e. replicates. <br>
 **How the averages are calculated:** <br> 
 All measurements for each replicate is pooled, the average LPER estimates are calculated for each interval and from that the bioenergetics are calculated.
+
 <br>
 <br>
 <br>
 <br>
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
-l.bio.PER.well %>%
-  filter(variable != "Other") %>%
-  ggplot(aes(x = variable, y = value))+
-  ggtitle("Ratio based log scale Bio-Energetics PER (folds)")+
-  geom_boxplot(aes(fill = Group, color = Group), alpha = 0.5, position = position_dodge(width = 0.6),)+
-  geom_point(aes(color = Group), position = position_dodge(width = 0.6), size = 1)+
-  # geom_point(data = n.bio.sample, mapping = aes(x = variable, y = value, group = Sample), color = "black", size = 3,
-  #            position = position_dodge(width = 0.6))+
-  # geom_errorbar(data = n.bio.sample, aes(ymin=value-se, ymax=value+se, group = Sample), width=0.5, size = 0.8,
-  #                position=position_dodge(0.6))+
-  scale_color_brewer(palette = "Dark2")+
-  scale_fill_brewer(palette = "Dark2")+
-  # guides(fill=guide_legend(override.aes=list(shape=21)))+
-  xlab("Bio-Energetics")+
-  ylab(expression("Mean Log(PER) value [log(pmol H"["+"]*" /1000 cells)]"))+
-  theme_bw()
+plot <- plot3(l.bio.PER.well) +
+  ggtitle("Plot type 3B: Ratio based log scale Bio-Energetics PER (folds)")+
+  ylab(expression("Mean Log(PER) value [log(pmol H"["+"]*" /1000 cells)]"))
+plot
 ```
 
 **Figure description:** <br> 
 Shows the bioenergetic estimates for each well. <br>
 **Which data is used:** <br> 
 All measurements are grouped by well, sample id (group name + date) and interval. This means we calculate the bioenegetics for each individual well. Be aware that due to outlier removal of measurements, some bioenergetics can't be calculated for all wells.
+
 <br>
 <br>
 <br>
 <br>
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width = 8}
+write_xlsx(n.bio.PER.well, paste0(OUTPUT_PATH,"/BioEnergetics-PER-well.xlsx"))
+write_xlsx(n.bio.PER.replicate, paste0(OUTPUT_PATH,"/BioEnergetics-PER-replicate.xlsx"))
+write_xlsx(n.bio.PER.sample, paste0(OUTPUT_PATH,"/BioEnergetics-PER-sample.xlsx"))
 
-# add standard errors
-# st.err <- melt(norm.be.PER$standard.errors, value.name = "SE", variable.name = "Bio.e" )
-# be.er  <- left_join(n.bio.PER, st.err, by = c("Sample", "variable"))
-# be.er  <- arrange(be.er, Sample)
-write_csv(n.bio.PER.replicate, paste0(OUTPUT_PATH,"/PER-BioEnergetics.csv"))
-# add standard errors
-# st.err <- melt(log.be$standard.errors, value.name = "SE", variable.name = "variable" )
-# be.er  <- left_join(l.bio.PER, st.err, by = c("Sample", "variable"))
-# be.er <- arrange(be.er, Sample)
-write_csv(l.bio.PER.replicate, paste0(OUTPUT_PATH,"/logPER-BioEnergetics.csv"))
-
-
-
-
+write_xlsx(l.bio.PER.well, paste0(OUTPUT_PATH,"/BioEnergetics-LPER-well.xlsx"))
+write_xlsx(l.bio.PER.replicate, paste0(OUTPUT_PATH,"/BioEnergetics-LPER-replicate.xlsx"))
+write_xlsx(l.bio.PER.sample, paste0(OUTPUT_PATH,"/BioEnergetics-LPER-sample.xlsx"))
 ```
 
+<br>
+<br>
+<br>
 
 # PER vs OCR
 
@@ -1129,7 +974,7 @@ write_csv(l.bio.PER.replicate, paste0(OUTPUT_PATH,"/logPER-BioEnergetics.csv"))
 basal.OCR <- n.bio.replicate %>%
   filter(variable == "Basal.Resp") %>%
   mutate(Group = ifelse(grepl("A", Sample), "A", "B"))
-basal.PER <- n.bio.PER %>%
+basal.PER <- n.bio.PER.replicate %>%
   filter(variable == "Basal.PER") %>%
   mutate(Group = ifelse(grepl("A", Sample), "A", "B"))
 
@@ -1140,7 +985,7 @@ total <- merge(basal.PER, basal.OCR, by = "Sample", suffixes = c(".PER", ".OCR")
 
 ggplot(total)+
   ggtitle("Basal.PER vs Basal.OCR")+
-  geom_point(aes(value.PER, value.OCR))+
+  geom_point(aes(mean.PER, mean.OCR))+
   ylab("Basal OCR")+
   xlab("Basal PER")+
   theme_bw()
@@ -1151,7 +996,7 @@ ggplot(total)+
 ```{r echo=FALSE}
 max.OCR   <- n.bio.replicate %>% filter(variable == "Maximal.Resp") %>%
   mutate(Group = ifelse(grepl("A", Sample), "A", "B"))
-max.PER <- n.bio.PER %>% filter(variable == "Max.PER") %>%
+max.PER <- n.bio.PER.replicate %>% filter(variable == "Max.PER") %>%
   mutate(Group = ifelse(grepl("A", Sample), "A", "B"))
 
 total_max <- merge(max.PER, max.OCR, by = "Sample", suffixes = c(".PER", ".OCR"))
@@ -1161,7 +1006,7 @@ total_max <- merge(max.PER, max.OCR, by = "Sample", suffixes = c(".PER", ".OCR")
 
 ggplot(total_max)+
   ggtitle("Max PER vs Max OCR")+
-  geom_point(aes(value.PER, value.OCR))+
+  geom_point(aes(mean.PER, mean.OCR))+
   ylab("Max OCR")+
   xlab("Max PER")+
   theme_bw()
@@ -1169,16 +1014,4 @@ ggplot(total_max)+
 
 ```
 
-# Stines test area. Must be deleted when pipeline is finished
-<!-- # ```{r} -->
-<!-- # E %>% -->
-<!-- #   ggplot(aes(Interval,PER))+ -->
-<!-- #   ggtitle("PER Estimates natural scale")+ -->
-<!-- #   geom_boxplot( width = 0.6, outlier.size = -1, show.legend = FALSE, fill="pink", alpha = 0.7)+ -->
-<!-- #   # geom_line(aes(group = sample_id, Interval,mean), col = "grey", size = .1, show.legend = FALSE)+ -->
-<!-- #   geom_jitter( width = 0.2, show.legend = FALSE, size = 0.5 , alpha = 0.7)+ -->
-<!-- #   xlab("Intervals")+ -->
-<!-- #   ylab("logPER")+ -->
-<!-- #   theme_bw() -->
-<!-- # ``` -->
 

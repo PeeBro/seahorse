@@ -5,6 +5,93 @@
 
 options(dplyr.summarise.inform = FALSE)
 
+### Melt functions to make pretty data frames ###
+melt_bioenergetics_sample <- function(d) {
+  bio <- melt(d$bioenergetics)
+  bio.se <- melt(d$standard.errors)
+  colnames(bio.se)[3] <- "se"
+  bio <- merge(bio,bio.se)
+  colnames(bio)[3] <- "mean"
+  return(bio)
+}
+
+melt_bioenergetics_replicate <- function(d) {
+  bio <- melt(d$bioenergetics)
+  bio.se <- melt(d$standard.errors)
+  colnames(bio.se)[3] <- "se"
+  bio <- merge(bio,bio.se)
+  colnames(bio)[3] <- "mean"
+  bio <- bio %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)),
+                                                 Group = substr(Sample, start = 1, stop = nchar(Sample)-19))
+  return(bio)
+}
+
+melt_bioenergetics_well <- function(d) {
+  bio <- melt(d$bioenergetics)
+  bio.se <- melt(d$standard.errors)
+  colnames(bio.se)[4] <- "se"
+  bio <- merge(bio,bio.se)
+  colnames(bio)[4] <- "mean"
+  bio <- bio %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)),
+                         Group = substr(Sample, start = 1, stop = nchar(Sample)-19))
+  return(bio)
+}
+
+### Plot functions to make plotting easier ###
+
+plot1 <- function(well, replicate, sample){
+  well %>%
+    filter(variable != "Other") %>%
+    ggplot(aes(x = "", y = mean))+
+    geom_beeswarm(aes(color = Date, shape = Group, group = Group), cex = 3, dodge.width = 0.8)+
+    geom_point(data = replicate, mapping = aes(x = "", y = mean, group = Group, fill = Date), 
+               color = "black", shape = 21, size = 5, 
+               position = position_dodge(width = 0.8))+
+    geom_point(data = sample, mapping = aes(x = "", y = mean, group = Sample), 
+               fill = "black", color = "red", shape = 21, size = 1.5,
+               position = position_dodge(width = 0.8))+
+    geom_errorbar(data = sample, aes(ymin=mean-se, ymax=mean+se, group = Sample), width=0.5, size = 0.8,
+                  position=position_dodge(0.8))+
+    scale_shape_manual(values= c(15,8, 17,3))+
+    scale_color_brewer(palette = "Dark2")+
+    scale_fill_brewer(palette = "Dark2")+
+    facet_wrap(~variable, scales = "free")+
+    xlab("Bio-Energetics")+
+    theme_bw()
+  
+}
+
+plot2 <- function(replicate, sample) {
+  replicate %>%
+    filter(variable != "Other") %>%
+    ggplot(aes(x = variable, y = mean, group = Group))+
+    geom_point(aes(fill = Group, shape = Date), size = 3, position = position_dodge(width = 0.6))+
+    geom_point(data = sample, mapping = aes(x = variable, y = mean, group = Sample), color = "black", size = 1.5,
+               position = position_dodge(width = 0.6))+
+    geom_errorbar(data = sample, aes(ymin=mean-se, ymax=mean+se, group = Sample), width=0.5, size = 0.8,
+                  position=position_dodge(0.6))+
+    scale_shape_manual(values= c(21,22))+
+    scale_color_brewer(palette = "Dark2")+
+    scale_fill_brewer(palette = "Dark2")+
+    guides(fill=guide_legend(override.aes=list(shape=21)))+
+    xlab("Bio-Energetics")+
+    theme_bw()
+}
+
+plot3 <- function(well) {
+  well %>%
+    filter(variable != "Other") %>%
+    ggplot(aes(x = variable, y = mean))+
+    geom_boxplot(aes(fill = Group, color = Group), alpha = 0.5, position = position_dodge(width = 0.8),)+
+    geom_point(aes(color = Group), position = position_dodge(width = 0.8), size = 1)+
+    scale_color_brewer(palette = "Dark2")+
+    scale_fill_brewer(palette = "Dark2")+
+    xlab("Bio-Energetics")+
+    theme_bw()
+}
+
+
+
 correct_background_OCR <- function(d){
   # correct for outliars in background measurements and remove background
   # takes wells marked as Background and for each plate and time substracts median of those from OCR measurements
@@ -142,6 +229,7 @@ read_xlsx_set <- function(path_, pattern_){
     # --------- READ DATA --------- #
     # Read rates
     d <- read_xlsx(x,  sheet = "Rate")
+
     
     # Read assay configuration
     assay_name <- toString( read_xlsx(x,  
@@ -158,6 +246,15 @@ read_xlsx_set <- function(path_, pattern_){
                                             range = "B24:B24",
                                             col_names = " "))
     
+
+    # Check if PER column is empty. If yes stop the analysis with a message
+    if (nrow(d) == sum(d$PER == 0)) {
+      stop(sprintf("File with assay name '%s' has only zeroes in the PER column. Analysis stopped. Please check input files before trying again.",assay_name ))
+      
+    }
+    
+    
+        
     #### Add plateID column
     d$plate_id <- rep(paste0(assay_name, " ", exper_date), times = nrow(d)) #? Why is this needed as repeats?
     
@@ -607,7 +704,7 @@ compute_bioenergetics_well <- function(dm_r, method) {
   
   if (method == "OCR") {
     # difference based bioenergetics
-    bio_e <- estimates %>% na.omit() %>% 
+    bio_e <- estimates %>%
       mutate(Sample           = sample_id,
              Basal.Resp       = Int1 - Int4,
              ATP.linked.Resp  = Int1 - Int2,
@@ -690,7 +787,7 @@ compute_bioenergetics_well <- function(dm_r, method) {
     colnames(st_errors)[2] <- "Well"
     
   }
-  return(list(bioenergetics = bio_e, standard.errors = st_errors, estimates = estim_mean ))
+  return(list(bioenergetics = bio_e, standard.errors = st_errors, estimates = estim_mean))
 }
 # -------------------------------------------------------------------------- COMPUTE BIOENERGETICS FOR EACH SAMPLE
 compute_bioenergetics_sample <- function(dm_r, method) {
