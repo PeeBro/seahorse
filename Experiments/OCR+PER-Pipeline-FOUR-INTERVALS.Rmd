@@ -5,6 +5,7 @@ output:
     number_sections: true
 params:
   input_folder: "GtF_2021-2_FAKE"
+  error_measure: "se"
 editor_options: 
   chunk_output_type: console
 ---
@@ -18,6 +19,7 @@ editor_options:
 Step 1: Make a new folder in the Data/INPUT folder and place your excel files there <br>
 Step 2: Make sure that you have not opened any of the files in the folder <br>
 Step 3: Write the name of the folder above. Use quotes like this "My_folder" <br>
+Step 4: Choose an error measure. Use quotes "sd" or "se"
 Step 4: Run the code chunk below <br>
 
 
@@ -52,8 +54,9 @@ library(writexl)
 
 
 
-# Get input folder
+# Get input folder and error_measure
 input_folder <- params$input_folder
+error_measure <- params$error_measure
 
 # Create output folder
 
@@ -257,68 +260,13 @@ for (smpl in unique(dr_ocr$sample_id)) {
 <br>
 <br>
 
-## Summary statistics for each sample
-```{r echo = FALSE}
-ocr_summary_stats <- dr_ocr %>% filter(is.out.p == FALSE) %>% 
-  group_by(sample_id, Well, Interval, Group) %>% 
-  summarise(well_mean = mean(OCR))%>% # Gives the mean value of each well withour outliers
-  group_by(Group, Interval) %>% # Gives the mean value of each sample without outliers
-  summarise(sample_mean = mean(well_mean),
-            well_mean,
-            Well)
-
-locr_summary_stats <- dr_ocr %>% filter(is.out.p == FALSE) %>% 
-  group_by(sample_id, Well, Interval, Group) %>% 
-  summarise(well_mean = mean(LOCR))%>% # Gives the mean value of each well withour outliers
-  group_by(Group, Interval) %>% # Gives the mean value of each sample without outliers
-  summarise(sample_mean = mean(well_mean),
-            well_mean,
-            Well)
-
-
-
-ocr_summary_stats %>% ggplot(mapping = aes(x = Interval, y = well_mean, group = Group)) +
-  geom_line(mapping = aes(x = Interval, y = sample_mean, group = Group), size = 0.2, color = "grey", position = position_dodge(width = 0.2) ) +
-  geom_point(mapping = aes(x = Interval, y = sample_mean, fill = Group), color = "black", shape = 21, size = 3, position = position_dodge(width = 0.2) )+
-  # stat_summary(fun = mean, geom = "crossbar", width = 0.1, aes(color = Group))+
-  stat_summary(fun.max = function(x) mean(x) + sd(x),
-               fun.min = function(x) mean(x) - sd(x), geom = "errorbar", width = 0.4, size = 0.5, aes(color = Group), position = position_dodge(width = 0.2) )+
-  scale_fill_brewer(palette = "Dark2")+
-  scale_color_brewer(palette = "Dark2")+
-  ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))+
-  # geom_jitter(dr_ocr)
-  theme_bw()+
-  ggtitle("OCR estimates sample summary (Outliers removed)")
-
-locr_summary_stats %>% ggplot(mapping = aes(x = Interval, y = well_mean, group = Group)) +
-  geom_line(mapping = aes(x = Interval, y = sample_mean, group = Group), size = 0.2, color = "grey", position = position_dodge(width = 0.2) ) +
-  geom_point(mapping = aes(x = Interval, y = sample_mean, fill = Group), color = "black", shape = 21, size = 3, position = position_dodge(width = 0.2) )+
-  # stat_summary(fun = mean, geom = "crossbar", width = 0.1, aes(color = Group))+
-  stat_summary(fun.max = function(x) mean(x) + sd(x),
-               fun.min = function(x) mean(x) - sd(x), geom = "errorbar", width = 0.4, size = 0.5, aes(color = Group), position = position_dodge(width = 0.2) )+
-  scale_fill_brewer(palette = "Dark2")+
-  scale_color_brewer(palette = "Dark2")+
-  ylab(expression("Mean LOCR value [log10(pmol O"[2]*" /1000 cells)]"))+
-  # geom_jitter(dr_ocr)
-  theme_bw()+
-  ggtitle("LOCR estimates sample summary (Outliers removed)")
-
-```
-
-**Figure description:** <br> Colored points are the group mean of wells, and the errorbars shows the sd of the well means for each group
-
-<br>
-<br>
-<br>
-<br>
-
-## Bioenergetics and Estimates
-### Estimates
-Estimates are taken by median of measurements from each interval in sample. Estimates are  stored together with other details about the intervals in files called <Method>-Estimated_values.xlsx in OUTPUT folder.
+### Summary statistics for each sample after outlier removal
+Estimates are taken by mean of measurements from each interval in sample. Estimates are  stored together with other details about the intervals in files called <Method>-Estimated_values.xlsx in OUTPUT folder.
 
 If you want to see or change how they are computed see the function compute_bioenergetics_ ()in file analysis_source_functions.R
 
 ```{r echo=FALSE}
+# The compute bionergetics functions does also calculate the estimates. Both are calculated here
 norm.be.well <- compute_bioenergetics_well(dr_ocr, "OCR")
 log.be.well <- compute_bioenergetics_well(dr_ocr, "LOCR")
 norm.be.replicate <- compute_bioenergetics_replicate(dr_ocr, "OCR")
@@ -335,6 +283,28 @@ write_xlsx(norm.be.sample$estimates, paste0(OUTPUT_PATH,"/Estimated_values-OCR-s
 write_xlsx(log.be.sample$estimates, paste0(OUTPUT_PATH,"/Estimates_values-LOCR-samples.xlsx"))
 ```
 
+## Summary statistics for each sample
+```{r echo = FALSE}
+summary_plot_function(norm.be.sample)+
+    ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))+
+    ggtitle("OCR estimates sample summary (Outliers removed)")
+
+
+summary_plot_function(log.be.sample)+
+    ylab(expression("Mean LOCR value [log(pmol O"[2]*" /1000 cells)]"))+
+    ggtitle("LOCR estimates sample summary (Outliers removed)")
+```
+
+**Figure description:** <br> Colored points are the group mean of wells, and the errorbars shows the `r params$error_measure` of the well means for each group
+
+<br>
+<br>
+<br>
+<br>
+
+## Bioenergetics
+
+
 ```{r echo=FALSE, echo=FALSE}
 # Print interval estimates
 norm.be.replicate$estimates[1:4,] %>%
@@ -342,80 +312,20 @@ norm.be.replicate$estimates[1:4,] %>%
   kable_styling(full_width = F)
 ```
 
-```{r echo = FALSE}
-# We need a different estimate calculation to make the plots. The values calculated above is for each sample in each interval. We also need data for each well
-
-ocr_stats <- dr_ocr %>% filter(is.out.p == FALSE) %>% 
-  group_by(sample_id, Well, Interval) %>%
-  summarise(well_mean = mean(OCR)) %>% 
-  group_by(sample_id, Interval) %>%
-  mutate(replicate_mean = mean(well_mean)) %>% ungroup %>%
-  mutate(Date = substr(sample_id, start = nchar(sample_id)-15, stop = nchar(sample_id)),
-         Group = substr(sample_id, start = 1, stop = nchar(sample_id)-19)) %>% 
-  group_by(Group, Interval) %>%
-  summarise(sample_mean = mean(well_mean),
-            replicate_mean,
-            well_mean,
-            sample_id,
-            Date)
-  
-
-
-locr_stats <- dr_ocr %>% filter(is.out.p == FALSE) %>% 
-  group_by(sample_id, Well, Interval) %>%
-  summarise(well_mean = mean(LOCR)) %>% 
-  group_by(sample_id, Interval) %>%
-  mutate(replicate_mean = mean(well_mean)) %>% ungroup %>%
-  mutate(Date = substr(sample_id, start = nchar(sample_id)-15, stop = nchar(sample_id)),
-         Group = substr(sample_id, start = 1, stop = nchar(sample_id)-19)) %>% 
-  group_by(Group, Interval) %>%
-  summarise(sample_mean = mean(well_mean),
-            replicate_mean,
-            well_mean,
-            sample_id,
-            Date)
-
-```
-
-
 
 ```{r, echo = FALSE,  fig.width = 8}
-ocr_stats %>% ggplot(aes(x=Group, y=well_mean)) + 
-  geom_beeswarm(aes(color = Date), cex=2, dodge.width = 0)+
-  facet_wrap(~Interval, scales = "free")+
-  ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))+
-  xlab("Sample")+
-  stat_summary(fun = mean, geom = "crossbar", width = 0.3)+
-  stat_summary(fun.max = function(x) mean(x) + sd(x),
-               fun.min = function(x) mean(x) - sd(x), geom = "errorbar", width = 0.3)+
-  geom_point(aes(x=Group, y = replicate_mean, fill = Date), color = "Black", size = 4, shape = 21)+
-  theme_bw()+
-  theme(legend.position="bottom",     
-        strip.text.x = element_text(size = 12, face = "bold"),
-        strip.text.y = element_text(size = 12, face = "bold"))+
-  scale_colour_brewer(palette = "Dark2")+
-  scale_fill_brewer(palette = "Dark2")+
-  ggtitle("OCR estimates shown by well, replicate and sample")
+summary_plot_function2(norm.be.well, norm.be.replicate, norm.be.sample)+
+    ggtitle("OCR estimates shown by well, replicate and sample")+
+    ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))
 
-locr_stats %>% ggplot(aes(x=Group, y=well_mean)) + 
-  geom_beeswarm(aes(color = Date), cex=2, dodge.width = 0)+
-  facet_wrap(~Interval, scales = "free")+
-  ylab(expression("Mean Log(OCR) value [log10(pmol O"[2]*" /1000 cells)]"))+
-  xlab("Sample")+
-  stat_summary(fun = mean, geom = "crossbar", width = 0.3)+
-  stat_summary(fun.max = function(x) mean(x) + sd(x),
-               fun.min = function(x) mean(x) - sd(x), geom = "errorbar", width = 0.3)+
-  geom_point(aes(x=Group, y = replicate_mean, fill = Date), color = "Black", size = 4, shape = 21)+
-  theme_bw()+
-  theme(legend.position="bottom",     
-        strip.text.x = element_text(size = 12, face = "bold"),
-        strip.text.y = element_text(size = 12, face = "bold"))+
-  scale_colour_brewer(palette = "Dark2")+
-  scale_fill_brewer(palette = "Dark2")+
-  ggtitle("LOCR estimates shown by well, replicate and sample")
+
+summary_plot_function2(norm.be.well, norm.be.replicate, norm.be.sample)+
+    ggtitle("LOCR estimates shown by well, replicate and sample")+
+    ylab(expression("Mean LOCR value [log10(pmol O"[2]*" /1000 cells)]"))
+  
 ```
 
-**Figure description:** <br> Each point is a well average. Colors indicate replicates, large points represent the group mean of wells, the bold black line is the sample mean of wells, and the errorbars shows the sd of the well means for each group")
+**Figure description:** <br> Each point is a well average. Colors indicate replicates, large points represent the group mean of wells, the bold black line is the sample mean of wells, and the errorbars shows the `r params$error_measure` of the well means for each group")
 
 <br>
 <br>
@@ -432,7 +342,6 @@ If you want to see or change how they are computed see the function compute_bioe
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
 # normal scale Bioenergetics
 # Prepare data frames with well, replicate and sample averages
-
 n.bio.well <- melt_bioenergetics_well(norm.be.well)
 n.bio.replicate <- melt_bioenergetics_replicate(norm.be.replicate)
 n.bio.sample <- melt_bioenergetics_sample(norm.be.sample)
@@ -449,7 +358,7 @@ plot
 **Figure description:** <br> 
 Small symbols: Bioenergetics calculated for each well. <br> 
 Large dots: Indicate the mean of each replicate. <br>
-Errorbars and mean (black): Sample mean + errorbars indicating SE. <br>
+Errorbars and mean (black): Sample mean + errorbars indicating `r error_measure`. <br>
 **Which data is used:** <br> 
 Small symbols: All measurements are grouped by well, sample id (group name + date) and interval. This means we calculate the OCR estimates and bioenegetics for each individual well. Be aware that due to outlier removal of measurements, some bioenergetics can't be calculated for all wells. <br>
 Large dots: All measurements are grouped by each interval and sample id (group name + date). This means that we pool all wells for each replicate, calculate the average OCR values for each interval and calculate the bioenergetics. <br>
@@ -515,7 +424,7 @@ plot
 **Figure description:** <br> 
 Small symbols: Bioenergetics calculated for each well. <br> 
 Large dots: Indicate the mean of each replicate. <br>
-Errorbars and mean (black): Sample mean + errorbars indicating SE. <br>
+Errorbars and mean (black): Sample mean + errorbars indicating `r error_measure`. <br>
 **Which data is used:** <br> 
 Small symbols: All measurements are grouped by well, sample id (group name + date) and interval. This means we calculate the LOCR estimates and bioenergetics for each individual well. Be aware that due to outlier removal of measurements, some bioenergetics can't be calculated for all wells. <br>
 Large dots: All measurements are grouped by each interval and sample id (group name + date). This means that we pool all wells for each replicate, calculate the average LOCR values for each interval and calculate the bioenergetics. <br>
@@ -669,60 +578,8 @@ for (smpl in unique(dr_per$sample_id)) {
 <br>
 <br>
 
-## Summary statistics for each sample
-```{r echo = FALSE}
-per_summary_stats <- dr_per %>% filter(is.out.p == FALSE) %>% 
-  group_by(sample_id, Well, Interval, Group) %>% 
-  summarise(well_mean = mean(PER))%>% # Gives the mean value of each well withour outliers
-  group_by(Group, Interval) %>% # Gives the mean value of each sample without outliers
-  summarise(sample_mean = mean(well_mean),
-            well_mean,
-            Well)
-
-lper_summary_stats <- dr_per %>% filter(is.out.p == FALSE) %>% 
-  group_by(sample_id, Well, Interval, Group) %>% 
-  summarise(well_mean = mean(LPER))%>% # Gives the mean value of each well withour outliers
-  group_by(Group, Interval) %>% # Gives the mean value of each sample without outliers
-  summarise(sample_mean = mean(well_mean),
-            well_mean,
-            Well)
-
-
-
-per_summary_stats %>% ggplot(mapping = aes(x = Interval, y = well_mean, group = Group)) +
-  geom_line(mapping = aes(x = Interval, y = sample_mean, group = Group), size = 0.2, color = "grey", position = position_dodge(width = 0.2) ) +
-  geom_point(mapping = aes(x = Interval, y = sample_mean, fill = Group), color = "black", shape = 21, size = 3, position = position_dodge(width = 0.2) )+
-  # stat_summary(fun = mean, geom = "crossbar", width = 0.1, aes(color = Group))+
-  stat_summary(fun.max = function(x) mean(x) + sd(x),
-               fun.min = function(x) mean(x) - sd(x), geom = "errorbar", width = 0.4, size = 0.5, aes(color = Group), position = position_dodge(width = 0.2) )+
-  scale_fill_brewer(palette = "Dark2")+
-  scale_color_brewer(palette = "Dark2")+
-  ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))+
-  theme_bw()+
-  ggtitle("PER estimates sample summary (Outliers removed)")
-
-lper_summary_stats %>% ggplot(mapping = aes(x = Interval, y = well_mean, group = Group)) +
-  geom_line(mapping = aes(x = Interval, y = sample_mean, group = Group), size = 0.2, color = "grey", position = position_dodge(width = 0.2) ) +
-  geom_point(mapping = aes(x = Interval, y = sample_mean, fill = Group), color = "black", shape = 21, size = 3, position = position_dodge(width = 0.2) )+
-  # stat_summary(fun = mean, geom = "crossbar", width = 0.1, aes(color = Group))+
-  stat_summary(fun.max = function(x) mean(x) + sd(x),
-               fun.min = function(x) mean(x) - sd(x), geom = "errorbar", width = 0.4, size = 0.5, aes(color = Group), position = position_dodge(width = 0.2) )+
-  scale_fill_brewer(palette = "Dark2")+
-  scale_color_brewer(palette = "Dark2")+
-  ylab(expression("Mean PER value [log10(pmol H"["+"]*" /1000 cells)]"))+
-  theme_bw()+
-  ggtitle("LPER estimates sample summary (Outliers removed)")
-
-```
-
-<br>
-<br>
-<br>
-
-## Bioenergetics and Estimates
-### Estimates
-
 ```{r echo=FALSE}
+# Both estimates and bioenergetics are calculated here
 norm.be.PER.well <- compute_bioenergetics_well(dr_per, "PER")
 log.be.PER.well <- compute_bioenergetics_well(dr_per, "LPER")
 norm.be.PER.replicate <- compute_bioenergetics_replicate(dr_per, "PER")
@@ -739,82 +596,40 @@ write_xlsx(norm.be.PER.sample$estimates, paste0(OUTPUT_PATH,"/Estimated_values-P
 write_xlsx(log.be.PER.sample$estimates, paste0(OUTPUT_PATH,"/Estimates_values-LPER-samples.xlsx"))
 ```
 
-```{r, echo = FALSE}
-# We need a different bioenergetics calculation to make the plots. The values calculated above is for each sample in each interval. We also need data for each well
-
-per_stats <- dr_per %>% filter(is.out.p == FALSE) %>% 
-  group_by(sample_id, Well, Interval) %>%
-  summarise(well_mean = mean(PER)) %>% 
-  group_by(sample_id, Interval) %>%
-  mutate(replicate_mean = mean(well_mean)) %>% ungroup %>%
-  mutate(Date = substr(sample_id, start = nchar(sample_id)-15, stop = nchar(sample_id)),
-         Group = substr(sample_id, start = 1, stop = nchar(sample_id)-19)) %>% 
-  group_by(Group, Interval) %>%
-  summarise(sample_mean = mean(well_mean),
-            replicate_mean,
-            well_mean,
-            sample_id,
-            Date)
-  
+## Summary statistics for each sample
+```{r echo = FALSE}
+summary_plot_function(norm.be.PER.sample)+
+    ggtitle("PER estimates sample summary (Outliers removed)")+
+    ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))
 
 
-lper_stats <- dr_per %>% filter(is.out.p == FALSE) %>% 
-  group_by(sample_id, Well, Interval) %>%
-  summarise(well_mean = mean(LPER)) %>% 
-  group_by(sample_id, Interval) %>%
-  mutate(replicate_mean = mean(well_mean)) %>% ungroup %>%
-  mutate(Date = substr(sample_id, start = nchar(sample_id)-15, stop = nchar(sample_id)),
-         Group = substr(sample_id, start = 1, stop = nchar(sample_id)-19)) %>% 
-  group_by(Group, Interval) %>%
-  summarise(sample_mean = mean(well_mean),
-            replicate_mean,
-            well_mean,
-            sample_id,
-            Date)
+
+summary_plot_function(log.be.PER.sample)+
+    ggtitle("LPER estimates sample summary (Outliers removed)")+
+    ylab(expression("Mean LPER value [log(pmol H"["+"]*" /1000 cells)]"))
 
 ```
 
+<br>
+<br>
+<br>
+
+## Bioenergetics and Estimates
 
 
 ```{r, echo = FALSE, fig.width = 8}
-per_stats %>% ggplot(aes(x=Group, y=well_mean)) + 
-  geom_beeswarm(aes(color = Date), cex=2, dodge.width = 0)+
-  facet_wrap(~Interval, scales = "free")+
-  ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))+
-  xlab("Sample")+
-  stat_summary(fun = mean, geom = "crossbar", width = 0.3)+
-  stat_summary(fun.max = function(x) mean(x) + sd(x),
-               fun.min = function(x) mean(x) - sd(x), geom = "errorbar", width = 0.3)+
-  geom_point(aes(x=Group, y = replicate_mean, fill = Date), color = "Black", size = 4, shape = 21)+
-  theme_bw()+
-  theme(legend.position="bottom",     
-        strip.text.x = element_text(size = 12, face = "bold"),
-        strip.text.y = element_text(size = 12, face = "bold"))+
-  scale_colour_brewer(palette = "Dark2")+
-  scale_fill_brewer(palette = "Dark2")+
-  ggtitle("PER estimates shown by well, replicate and sample")
+summary_plot_function2(norm.be.PER.well, norm.be.PER.replicate, norm.be.PER.sample)+
+    ggtitle("PER estimates shown by well, replicate and sample")+
+    ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))
 
 
-lper_stats %>% ggplot(aes(x=Group, y=well_mean)) + 
-  geom_beeswarm(aes(color = Date), cex=2, dodge.width = 0)+
-  facet_wrap(~Interval, scales = "free")+
-  ylab(expression("Mean Log(PER) value [log(pmol H"["+"]*" /1000 cells)]"))+
-  xlab("Sample")+
-  stat_summary(fun = mean, geom = "crossbar", width = 0.3)+
-  stat_summary(fun.max = function(x) mean(x) + sd(x),
-               fun.min = function(x) mean(x) - sd(x), geom = "errorbar", width = 0.3)+
-  geom_point(aes(x=Group, y = replicate_mean, fill = Date), color = "Black", size = 4, shape = 21)+
-  theme_bw()+
-  theme(legend.position="bottom",     
-        strip.text.x = element_text(size = 12, face = "bold"),
-        strip.text.y = element_text(size = 12, face = "bold"))+
-  scale_colour_brewer(palette = "Dark2")+
-  scale_fill_brewer(palette = "Dark2")+
-  ggtitle("LPER estimates shown by well, replicate and sample")
+summary_plot_function2(norm.be.PER.well, norm.be.PER.replicate, norm.be.PER.sample)+
+    ggtitle("LPER estimates shown by well, replicate and sample")+
+    ylab(expression("Mean LPER value [log10(pmol H"["+"]*" /1000 cells)]"))
 ```
 
 **Figure description:** <br>
-Colors indicate replicates, large points represent the group mean of wells, the bold black line is the sample mean of wells, and the errorbars shows the sd of the well means for each group.
+Colors indicate replicates, large points represent the group mean of wells, the bold black line is the sample mean of wells, and the errorbars shows the `r params$error_measure` of the well means for each group.
 
 <br>
 <br>
@@ -836,15 +651,13 @@ plot <- plot1(n.bio.PER.well,n.bio.PER.replicate, n.bio.PER.sample) +
   ggtitle("Plot type 1A: Difference based natural scale Bio-Energetics PER")+
   ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))
 plot
-
-
 ```
 
 
 **Figure description:** <br> 
 Small symbols: Bioenergetics calculated for each well. <br> 
 Large dots: Indicate the mean of each replicate. <br>
-Errorbars and mean (black): Sample mean + errorbars indicating SE. <br>
+Errorbars and mean (black): Sample mean + errorbars indicating `r error_measure`. <br>
 **Which data is used:** <br> 
 Small symbols: All measurements are grouped by well, sample id (group name + date) and interval. This means we calculate the PER estimates and bioenegetics for each individual well. Be aware that due to outlier removal of measurements, some bioenergetics can't be calculated for all wells. <br>
 Large dots: All measurements are grouped by each interval and sample id (group name + date). This means that we pool all wells for each replicate, calculate the average PER values for each interval and calculate the bioenergetics. <br>
@@ -910,7 +723,7 @@ plot
 **Figure description:** <br> 
 Small symbols: Bioenergetics calculated for each well. <br> 
 Large dots: Indicate the mean of each replicate. <br>
-Errorbars and mean (black): Sample mean + errorbars indicating SE. <br>
+Errorbars and mean (black): Sample mean + errorbars indicating `r error_measure`. <br>
 **Which data is used:** <br> 
 Small symbols: All measurements are grouped by well, sample id (group name + date) and interval. This means we calculate the LPER estimates and bioenergetics for each individual well. Be aware that due to outlier removal of measurements, some bioenergetics can't be calculated for all wells. <br>
 Large dots: All measurements are grouped by each interval and sample id (group name + date). This means that we pool all wells for each replicate, calculate the average LPER values for each interval and calculate the bioenergetics. <br>
@@ -949,11 +762,6 @@ Shows the bioenergetic estimates for each well. <br>
 **Which data is used:** <br> 
 All measurements are grouped by well, sample id (group name + date) and interval. This means we calculate the bioenegetics for each individual well. Be aware that due to outlier removal of measurements, some bioenergetics can't be calculated for all wells.
 
-<br>
-<br>
-<br>
-<br>
-
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width = 8}
 write_xlsx(n.bio.PER.well, paste0(OUTPUT_PATH,"/BioEnergetics-PER-well.xlsx"))
 write_xlsx(n.bio.PER.replicate, paste0(OUTPUT_PATH,"/BioEnergetics-PER-replicate.xlsx"))
@@ -967,51 +775,75 @@ write_xlsx(l.bio.PER.sample, paste0(OUTPUT_PATH,"/BioEnergetics-LPER-sample.xlsx
 <br>
 <br>
 <br>
+<br>
 
 # PER vs OCR
 
-```{r echo=FALSE}
-basal.OCR <- n.bio.replicate %>%
-  filter(variable == "Basal.Resp") %>%
-  mutate(Group = ifelse(grepl("A", Sample), "A", "B"))
-basal.PER <- n.bio.PER.replicate %>%
-  filter(variable == "Basal.PER") %>%
-  mutate(Group = ifelse(grepl("A", Sample), "A", "B"))
-
-total <- merge(basal.PER, basal.OCR, by = "Sample", suffixes = c(".PER", ".OCR"))
-
-# total <- total %>%
-#   mutate(Group = ifelse(grepl("B", Sample), "Post", "Pre"))
-
-ggplot(total)+
-  ggtitle("Basal.PER vs Basal.OCR")+
-  geom_point(aes(mean.PER, mean.OCR))+
-  ylab("Basal OCR")+
-  xlab("Basal PER")+
-  theme_bw()
-
-
-```
+### Basal OCR vs basal PER
 
 ```{r echo=FALSE}
-max.OCR   <- n.bio.replicate %>% filter(variable == "Maximal.Resp") %>%
-  mutate(Group = ifelse(grepl("A", Sample), "A", "B"))
-max.PER <- n.bio.PER.replicate %>% filter(variable == "Max.PER") %>%
-  mutate(Group = ifelse(grepl("A", Sample), "A", "B"))
+# Get basal data for each well
+basal.OCR.well <- n.bio.well %>%
+  filter(variable %in% c("Basal.Resp"))
+basal.PER.well <- n.bio.PER.well %>%
+  filter(variable %in% c("Basal.PER"))
+total.min.well <- merge(x = basal.OCR.well, y = basal.PER.well,by = c("Sample", "Well"), suffixes = c(".OCR", ".PER"))
+total.min.well <- total.min.well %>% mutate(min_max = "Basal")
 
-total_max <- merge(max.PER, max.OCR, by = "Sample", suffixes = c(".PER", ".OCR"))
+# Get max data for each well
+max.PER.well <- n.bio.PER.well %>%
+  filter(variable %in% c("Max.PER"))
+max.OCR.well <- n.bio.well %>%
+  filter(variable %in% c("Maximal.Resp"))
+total.max.well <- merge(x = max.PER.well, y = max.OCR.well,by = c("Sample", "Well"), suffixes = c(".PER", ".OCR"))
+total.max.well <- total.max.well %>% mutate(min_max = "Maximum")
 
-# total <- total %>%
-#   mutate(Group = ifelse(grepl("B", Sample), "Post", "Pre"))
+# Merge to create min/max sample data
+total.well <- rbind(total.min.well, total.max.well)
 
-ggplot(total_max)+
-  ggtitle("Max PER vs Max OCR")+
-  geom_point(aes(mean.PER, mean.OCR))+
-  ylab("Max OCR")+
-  xlab("Max PER")+
-  theme_bw()
+# Get basal data for each sample
+basal.OCR.sample <- n.bio.sample %>%
+  filter(variable %in% c("Basal.Resp"))
+basal.PER.sample <- n.bio.PER.sample %>%
+  filter(variable %in% c("Basal.PER"))
+total.min.sample <- merge(x = basal.OCR.sample, y = basal.PER.sample,by = c("Sample"), suffixes = c(".OCR", ".PER"))
+total.min.sample <- total.min.sample %>% mutate(min_max = "Basal")
 
+# Get max data for each sample
+max.PER.sample <- n.bio.PER.sample %>%
+  filter(variable %in% c("Max.PER"))
+max.OCR.sample <- n.bio.sample %>%
+  filter(variable %in% c("Maximal.Resp"))
+total.max.sample <- merge(x = max.PER.sample, y = max.OCR.sample,by = c("Sample"), suffixes = c(".PER", ".OCR"))
+total.max.sample <- total.max.sample %>% mutate(min_max = "Maximum")
 
+# Merge to create min/max sample data
+total.sample <- rbind(total.min.sample, total.max.sample)
 ```
 
 
+```{r echo = FALSE, fig.height= 12}
+total.well %>% ggplot()+
+  ggtitle("PER versus OCR")+
+  geom_point(mapping = aes(y = mean.PER, x = mean.OCR, fill = Group.PER), shape = 21)+
+  facet_wrap(~min_max)+
+  geom_point(data = total.sample, aes(y = mean.PER, x = mean.OCR, fill = Sample), size = 4, shape = 21)+
+  geom_errorbar(data = total.sample, 
+                aes(y = mean.PER, x = mean.OCR, 
+                    ymin=mean.PER-eval(parse(text = paste(params$error_measure, ".PER", sep = ""))), 
+                    ymax=mean.PER+eval(parse(text = paste(params$error_measure, ".PER", sep = "")))),
+                    color = "black", width=0.1, size = 0.8)+
+    geom_errorbar(data = total.sample, 
+                  aes(y = mean.PER, x = mean.OCR, 
+                      xmin=mean.OCR-eval(parse(text = paste(params$error_measure, ".OCR", sep = ""))), 
+                      xmax=mean.OCR+eval(parse(text = paste(params$error_measure, ".OCR", sep = "")))),
+                      color = "black", width=0.1, size = 0.8)+
+  scale_color_brewer(palette = "Dark2")+
+  scale_fill_brewer(palette = "Dark2")+
+  xlab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))+
+  ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))+
+  theme_bw()+
+  coord_equal(ratio = 1)+
+  labs(fill = "Sample")+
+    NULL
+```

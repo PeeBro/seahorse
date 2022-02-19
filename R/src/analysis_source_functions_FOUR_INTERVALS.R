@@ -9,8 +9,11 @@ options(dplyr.summarise.inform = FALSE)
 melt_bioenergetics_sample <- function(d) {
   bio <- melt(d$bioenergetics)
   bio.se <- melt(d$standard.errors)
+  bio.sd <- melt(d$standard.deviations)
   colnames(bio.se)[3] <- "se"
+  colnames(bio.sd)[3] <- "sd"
   bio <- merge(bio,bio.se)
+  bio <- merge(bio,bio.sd)
   colnames(bio)[3] <- "mean"
   return(bio)
 }
@@ -18,8 +21,11 @@ melt_bioenergetics_sample <- function(d) {
 melt_bioenergetics_replicate <- function(d) {
   bio <- melt(d$bioenergetics)
   bio.se <- melt(d$standard.errors)
+  bio.sd <- melt(d$standard.deviations)
   colnames(bio.se)[3] <- "se"
+  colnames(bio.sd)[3] <- "sd"
   bio <- merge(bio,bio.se)
+  bio <- merge(bio,bio.sd)
   colnames(bio)[3] <- "mean"
   bio <- bio %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)),
                                                  Group = substr(Sample, start = 1, stop = nchar(Sample)-19))
@@ -29,8 +35,12 @@ melt_bioenergetics_replicate <- function(d) {
 melt_bioenergetics_well <- function(d) {
   bio <- melt(d$bioenergetics)
   bio.se <- melt(d$standard.errors)
+  bio.sd <- melt(d$standard.deviations)
   colnames(bio.se)[4] <- "se"
+  colnames(bio.sd)[4] <- "sd"
+  colnames(bio.sd)[2] <- "Well"
   bio <- merge(bio,bio.se)
+  bio <- merge(bio,bio.sd)
   colnames(bio)[4] <- "mean"
   bio <- bio %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)),
                          Group = substr(Sample, start = 1, stop = nchar(Sample)-19))
@@ -38,6 +48,59 @@ melt_bioenergetics_well <- function(d) {
 }
 
 ### Plot functions to make plotting easier ###
+
+summary_plot_function <- function(df) {
+  
+  if(params$error_measure == "sd"){
+    e.m. <- "SD"
+  } else if(params$error_measure == "se"){
+    e.m. <- "SE"
+  }
+  
+  df$estimates %>% ggplot()+
+    geom_point(mapping = aes(x = Interval, y = mean, fill = Group), color = "black", shape = 21, size = 3, position = position_dodge(width = 0.2))+
+    geom_line(mapping = aes(x = Interval, y = mean, group = Group), size = 0.2, color = "grey", position = position_dodge(width = 0.2)) +
+    geom_errorbar(aes(x = Interval, y = mean, group = Group, ymin=mean-eval(parse(text = e.m.)), 
+                      ymax=mean+eval(parse(text = e.m.))),
+                  color = "black", width=0.4, size = 0.5, position = position_dodge(width = 0.2))+
+    scale_fill_brewer(palette = "Dark2")+
+    scale_color_brewer(palette = "Dark2")+
+    # geom_jitter(dr_ocr)
+    theme_bw()
+}
+
+summary_plot_function2 <- function(df_well, df_rep, df_sample) {
+  
+  if(params$error_measure == "sd"){
+    e.m. <- "SD"
+  } else if(params$error_measure == "se"){
+    e.m. <- "SE"
+  }
+  
+  df_well$estimates <- df_well$estimates %>%  mutate(Date = substr(sample_id, start = nchar(sample_id)-15, stop = nchar(sample_id)),
+                                                     Group = substr(sample_id, start = 1, stop = nchar(sample_id)-19))  
+  
+  df_rep$estimates <- df_rep$estimates %>%  mutate(Date = substr(sample_id, start = nchar(sample_id)-15, stop = nchar(sample_id)),
+                                                   Group = substr(sample_id, start = 1, stop = nchar(sample_id)-19))
+  
+  
+  df_well$estimates %>% ggplot()+
+    geom_beeswarm(aes(x =Group, y = mean, color = Date), cex=2, dodge.width = 0)+
+    geom_point(data = df_rep$estimates, aes(x=Group, y = mean, fill = Date), color = "Black", size = 4, shape = 21)+
+    geom_errorbar(data = df_sample$estimates, aes(x = Group, y = mean, ymin=mean-eval(parse(text = e.m.)), 
+                                                  ymax=mean+eval(parse(text = e.m.))),
+                  color = "black", width=0.4, size = 0.5, position = position_dodge(width = 0.2))+
+    geom_point(data = df_sample$estimates, mapping = aes(x = Group, y = mean), fill = "black", color = "red", shape = 21, size = 2)+
+    facet_wrap(~Interval)+
+    xlab("Sample")+
+    theme_bw()+
+    theme(strip.text.x = element_text(size = 12, face = "bold"),
+          strip.text.y = element_text(size = 12, face = "bold"))+
+    scale_colour_brewer(palette = "Dark2")+
+    scale_fill_brewer(palette = "Dark2")+
+    NULL
+  
+}
 
 plot1 <- function(well, replicate, sample){
   well %>%
@@ -50,12 +113,12 @@ plot1 <- function(well, replicate, sample){
     geom_point(data = sample, mapping = aes(x = "", y = mean, group = Sample), 
                fill = "black", color = "red", shape = 21, size = 1.5,
                position = position_dodge(width = 0.8))+
-    geom_errorbar(data = sample, aes(ymin=mean-se, ymax=mean+se, group = Sample), width=0.5, size = 0.8,
+    geom_errorbar(data = sample, aes(ymin=mean-eval(parse(text = error_measure)), ymax=mean+eval(parse(text = error_measure)), group = Sample), width=0.5, size = 0.8,
                   position=position_dodge(0.8))+
     scale_shape_manual(values= c(15,8, 17,3))+
     scale_color_brewer(palette = "Dark2")+
     scale_fill_brewer(palette = "Dark2")+
-    facet_wrap(~variable, scales = "free")+
+    facet_wrap(~variable)+
     xlab("Bio-Energetics")+
     theme_bw()
   
@@ -68,7 +131,7 @@ plot2 <- function(replicate, sample) {
     geom_point(aes(fill = Group, shape = Date), size = 3, position = position_dodge(width = 0.6))+
     geom_point(data = sample, mapping = aes(x = variable, y = mean, group = Sample), color = "black", size = 1.5,
                position = position_dodge(width = 0.6))+
-    geom_errorbar(data = sample, aes(ymin=mean-se, ymax=mean+se, group = Sample), width=0.5, size = 0.8,
+    geom_errorbar(data = sample, aes(ymin=mean-eval(parse(text = error_measure)), ymax=mean+eval(parse(text = error_measure)), group = Sample), width=0.5, size = 0.8,
                   position=position_dodge(0.6))+
     scale_shape_manual(values= c(21,22))+
     scale_color_brewer(palette = "Dark2")+
@@ -619,7 +682,16 @@ compute_bioenergetics_replicate <- function(dm_r, method) {
              Maximal.Resp     = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int4^2)/n.Int4)),
              Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
       select(c("Sample", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Spare.Resp.Cpcty", "Maximal.Resp", "Non.Mito.Resp"))
-
+    
+    sd_errors <- sd_n %>% 
+      mutate(Sample           = sd.sample_id,
+             Basal.Resp       = sqrt((sd.Int1^2)+(sd.Int4^2)),
+             ATP.linked.Resp  = sqrt((sd.Int1^2)+(sd.Int2^2)),
+             Proton.Leak      = sqrt((sd.Int2^2)+(sd.Int4^2)),
+             Spare.Resp.Cpcty = sqrt((sd.Int3^2)+(sd.Int1^2)),
+             Maximal.Resp     = sqrt((sd.Int3^2)+(sd.Int4^2)),
+             Non.Mito.Resp    = sd.Int4) %>%
+      select(c("Sample", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Spare.Resp.Cpcty", "Maximal.Resp", "Non.Mito.Resp"))
 
   } else if (method == "LOCR") {
     # Ratio based bioenergetics
@@ -645,6 +717,18 @@ compute_bioenergetics_replicate <- function(dm_r, method) {
       select(c("Sample", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Spare.Resp.Cpcty",
                "log.Maximal.Resp", "log.Non.Mito.Resp"))
 
+    sd_errors <- sd_n %>% 
+      mutate(Sample           = sd.sample_id,
+             log.Basal.Resp       = sqrt((sd.Int1^2)+(sd.Int4^2)),
+             log.ATP.linked.Resp  = sqrt((sd.Int1^2)+(sd.Int2^2)),
+             log.Proton.Leak      = sqrt((sd.Int2^2)+(sd.Int4^2)),
+             log.Spare.Resp.Cpcty = sqrt((sd.Int3^2)+(sd.Int1^2)),
+             log.Maximal.Resp     = sqrt((sd.Int3^2)+(sd.Int4^2)),
+             log.Non.Mito.Resp    = sd.Int4) %>%
+      select(c("Sample", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Spare.Resp.Cpcty",
+               "log.Maximal.Resp", "log.Non.Mito.Resp"))
+    
+    
   } else if (method == "PER") {
     bio_e <- estimates %>%
       mutate(Sample            = sample_id,
@@ -660,6 +744,13 @@ compute_bioenergetics_replicate <- function(dm_r, method) {
              Basal.PER         = sqrt(((sd.Int1^2)/n.Int1)),
              Max.PER           = sqrt(((sd.Int2^2)/n.Int2)),
              Glyco.Rsrv.Cpcty  = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int1^2)/n.Int1))) %>%
+      select(c("Sample", "Basal.PER", "Max.PER", "Glyco.Rsrv.Cpcty"))
+    
+    sd_errors <- sd_n %>%
+      mutate(Sample            = sd.sample_id,
+             Basal.PER         = sqrt(sd.Int1^2),
+             Max.PER           = sqrt(sd.Int2^2),
+             Glyco.Rsrv.Cpcty  = sqrt(sd.Int2^2+sd.Int1^2)) %>%
       select(c("Sample", "Basal.PER", "Max.PER", "Glyco.Rsrv.Cpcty"))
   } else if (method == "LPER") {
     bio_e <- estimates %>%
@@ -678,8 +769,14 @@ compute_bioenergetics_replicate <- function(dm_r, method) {
              log.Glyco.Rsrv.Cpcty  = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int1^2)/n.Int1))) %>%
       select(c("Sample", "log.Basal.PER", "log.Max.PER", "log.Glyco.Rsrv.Cpcty"))
 
+    sd_errors <- sd_n %>%
+      mutate(Sample            = sd.sample_id,
+             log.Basal.PER         = sqrt(sd.Int1^2),
+             log.Max.PER           = sqrt(sd.Int2^2),
+             log.Glyco.Rsrv.Cpcty  = sqrt(sd.Int2^2+sd.Int1^2)) %>%
+      select(c("Sample", "log.Basal.PER", "log.Max.PER", "log.Glyco.Rsrv.Cpcty"))
   }
-  return(list(bioenergetics = bio_e, standard.errors = st_errors, estimates = estim_mean ))
+  return(list(bioenergetics = bio_e, standard.deviations = sd_errors, standard.errors = st_errors, estimates = estim_mean ))
 }
 
 # -------------------------------------------------------------------------- COMPUTE BIOENERGETICS FOR EACH WELL
@@ -724,7 +821,20 @@ compute_bioenergetics_well <- function(dm_r, method) {
              Maximal.Resp     = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int4^2)/n.Int4)),
              Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
       select(c("Sample","n.Well", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Spare.Resp.Cpcty", "Maximal.Resp", "Non.Mito.Resp"))
-    colnames(st_errors)[2] <- "Well"
+      colnames(st_errors)[2] <- "Well"
+    
+    
+    sd_errors <- sd_n %>% 
+      mutate(Sample           = sd.sample_id,
+             Basal.Resp       = sqrt((sd.Int1^2)+(sd.Int4^2)),
+             ATP.linked.Resp  = sqrt((sd.Int1^2)+(sd.Int2^2)),
+             Proton.Leak      = sqrt((sd.Int2^2)+(sd.Int4^2)),
+             Spare.Resp.Cpcty = sqrt((sd.Int3^2)+(sd.Int1^2)),
+             Maximal.Resp     = sqrt((sd.Int3^2)+(sd.Int4^2)),
+             Non.Mito.Resp    = sd.Int4) %>%
+      select(c("Sample", "n.Well", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Spare.Resp.Cpcty", "Maximal.Resp", "Non.Mito.Resp"))
+      colnames(st_errors)[2] <- "Well"
+    
     
   } else if (method == "LOCR") {
     # Ratio based bioenergetics
@@ -749,7 +859,20 @@ compute_bioenergetics_well <- function(dm_r, method) {
              log.Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
       select(c("Sample", "n.Well", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Spare.Resp.Cpcty",
                "log.Maximal.Resp", "log.Non.Mito.Resp"))
-    colnames(st_errors)[2] <- "Well"
+      colnames(st_errors)[2] <- "Well"
+    
+    sd_errors <- sd_n %>% 
+      mutate(Sample           = sd.sample_id,
+             log.Basal.Resp       = sqrt((sd.Int1^2)+(sd.Int4^2)),
+             log.ATP.linked.Resp  = sqrt((sd.Int1^2)+(sd.Int2^2)),
+             log.Proton.Leak      = sqrt((sd.Int2^2)+(sd.Int4^2)),
+             log.Spare.Resp.Cpcty = sqrt((sd.Int3^2)+(sd.Int1^2)),
+             log.Maximal.Resp     = sqrt((sd.Int3^2)+(sd.Int4^2)),
+             log.Non.Mito.Resp    = sd.Int4) %>%
+      select(c("Sample", "n.Well", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Spare.Resp.Cpcty",
+               "log.Maximal.Resp", "log.Non.Mito.Resp"))
+      colnames(st_errors)[2] <- "Well"
+    
     
   } else if (method == "PER") {
     bio_e <- estimates %>% na.omit() %>% 
@@ -768,6 +891,16 @@ compute_bioenergetics_well <- function(dm_r, method) {
              Glyco.Rsrv.Cpcty  = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int1^2)/n.Int1))) %>%
       select(c("Sample","n.Well", "Basal.PER", "Max.PER", "Glyco.Rsrv.Cpcty"))
     colnames(st_errors)[2] <- "Well"
+    
+    sd_errors <- sd_n %>%
+      mutate(Sample            = sd.sample_id,
+             Basal.PER         = sqrt(sd.Int1^2),
+             Max.PER           = sqrt(sd.Int2^2),
+             Glyco.Rsrv.Cpcty  = sqrt(sd.Int2^2+sd.Int1^2)) %>%
+      select(c("Sample", "n.Well", "Basal.PER", "Max.PER", "Glyco.Rsrv.Cpcty"))
+      colnames(st_errors)[2] <- "Well"
+    
+    
   } else if (method == "LPER") {
     bio_e <- estimates %>% na.omit() %>% 
       mutate(Sample                = sample_id,
@@ -784,10 +917,18 @@ compute_bioenergetics_well <- function(dm_r, method) {
              log.Max.PER           = sqrt(((sd.Int2^2)/n.Int2)),
              log.Glyco.Rsrv.Cpcty  = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int1^2)/n.Int1))) %>%
       select(c("Sample", "n.Well", "log.Basal.PER", "log.Max.PER", "log.Glyco.Rsrv.Cpcty"))
-    colnames(st_errors)[2] <- "Well"
+      colnames(st_errors)[2] <- "Well"
+    
+    sd_errors <- sd_n %>%
+      mutate(Sample            = sd.sample_id,
+             log.Basal.PER         = sqrt(sd.Int1^2),
+             log.Max.PER           = sqrt(sd.Int2^2),
+             log.Glyco.Rsrv.Cpcty  = sqrt(sd.Int2^2+sd.Int1^2)) %>%
+      select(c("Sample", "n.Well", "log.Basal.PER", "log.Max.PER", "log.Glyco.Rsrv.Cpcty"))
+      colnames(st_errors)[2] <- "Well"
     
   }
-  return(list(bioenergetics = bio_e, standard.errors = st_errors, estimates = estim_mean))
+  return(list(bioenergetics = bio_e, standard.deviations = sd_errors, standard.errors = st_errors, estimates = estim_mean))
 }
 # -------------------------------------------------------------------------- COMPUTE BIOENERGETICS FOR EACH SAMPLE
 compute_bioenergetics_sample <- function(dm_r, method) {
@@ -831,6 +972,15 @@ compute_bioenergetics_sample <- function(dm_r, method) {
              Maximal.Resp     = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int4^2)/n.Int4)),
              Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
       select(c("Sample", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Spare.Resp.Cpcty", "Maximal.Resp", "Non.Mito.Resp"))
+    sd_errors <- sd_n %>% 
+      mutate(Sample           = sd.Group,
+             Basal.Resp       = sqrt((sd.Int1^2)+(sd.Int4^2)),
+             ATP.linked.Resp  = sqrt((sd.Int1^2)+(sd.Int2^2)),
+             Proton.Leak      = sqrt((sd.Int2^2)+(sd.Int4^2)),
+             Spare.Resp.Cpcty = sqrt((sd.Int3^2)+(sd.Int1^2)),
+             Maximal.Resp     = sqrt((sd.Int3^2)+(sd.Int4^2)),
+             Non.Mito.Resp    = sd.Int4) %>%
+      select(c("Sample", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Spare.Resp.Cpcty", "Maximal.Resp", "Non.Mito.Resp"))
     
     
   } else if (method == "LOCR") {
@@ -856,6 +1006,16 @@ compute_bioenergetics_sample <- function(dm_r, method) {
              log.Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
       select(c("Sample", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Spare.Resp.Cpcty",
                "log.Maximal.Resp", "log.Non.Mito.Resp"))
+    sd_errors <- sd_n %>% 
+      mutate(Sample           = sd.Group,
+             log.Basal.Resp       = sqrt((sd.Int1^2)+(sd.Int4^2)),
+             log.ATP.linked.Resp  = sqrt((sd.Int1^2)+(sd.Int2^2)),
+             log.Proton.Leak      = sqrt((sd.Int2^2)+(sd.Int4^2)),
+             log.Spare.Resp.Cpcty = sqrt((sd.Int3^2)+(sd.Int1^2)),
+             log.Maximal.Resp     = sqrt((sd.Int3^2)+(sd.Int4^2)),
+             log.Non.Mito.Resp    = sd.Int4) %>%
+      select(c("Sample", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Spare.Resp.Cpcty",
+               "log.Maximal.Resp", "log.Non.Mito.Resp"))
     
   } else if (method == "PER") {
     bio_e <- estimates %>%
@@ -873,6 +1033,13 @@ compute_bioenergetics_sample <- function(dm_r, method) {
              Max.PER           = sqrt(((sd.Int2^2)/n.Int2)),
              Glyco.Rsrv.Cpcty  = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int1^2)/n.Int1))) %>%
       select(c("Sample", "Basal.PER", "Max.PER", "Glyco.Rsrv.Cpcty"))
+      
+    sd_errors <- sd_n %>%
+      mutate(Sample            = sd.Group,
+             Basal.PER         = sqrt(sd.Int1^2),
+             Max.PER           = sqrt(sd.Int2^2),
+             Glyco.Rsrv.Cpcty  = sqrt(sd.Int2^2+sd.Int1^2)) %>%
+      select(c("Sample", "Basal.PER", "Max.PER", "Glyco.Rsrv.Cpcty"))
   } else if (method == "LPER") {
     bio_e <- estimates %>%
       mutate(Sample                = Group,
@@ -889,7 +1056,12 @@ compute_bioenergetics_sample <- function(dm_r, method) {
              log.Max.PER           = sqrt(((sd.Int2^2)/n.Int2)),
              log.Glyco.Rsrv.Cpcty  = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int1^2)/n.Int1))) %>%
       select(c("Sample", "log.Basal.PER", "log.Max.PER", "log.Glyco.Rsrv.Cpcty"))
-    
+    sd_errors <- sd_n %>%
+      mutate(Sample            = sd.Group,
+             log.Basal.PER         = sqrt(sd.Int1^2),
+             log.Max.PER           = sqrt(sd.Int2^2),
+             log.Glyco.Rsrv.Cpcty  = sqrt(sd.Int2^2+sd.Int1^2)) %>%
+      select(c("Sample", "log.Basal.PER", "log.Max.PER", "log.Glyco.Rsrv.Cpcty"))    
   }
-  return(list(bioenergetics = bio_e, standard.errors = st_errors, estimates = estim_mean ))
+  return(list(bioenergetics = bio_e,standard.deviations = sd_errors, standard.errors = st_errors, estimates = estim_mean ))
 }
