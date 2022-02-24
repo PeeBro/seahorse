@@ -27,8 +27,6 @@ melt_bioenergetics_replicate <- function(d) {
   bio <- merge(bio,bio.se)
   bio <- merge(bio,bio.sd)
   colnames(bio)[3] <- "mean"
-  bio <- bio %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)),
-                                                 Group = substr(Sample, start = 1, stop = nchar(Sample)-19))
   return(bio)
 }
 
@@ -42,8 +40,6 @@ melt_bioenergetics_well <- function(d) {
   bio <- merge(bio,bio.se)
   bio <- merge(bio,bio.sd)
   colnames(bio)[4] <- "mean"
-  bio <- bio %>%  mutate(Date = substr(Sample, start = nchar(Sample)-15, stop = nchar(Sample)),
-                         Group = substr(Sample, start = 1, stop = nchar(Sample)-19))
   return(bio)
 }
 
@@ -58,9 +54,9 @@ summary_plot_function <- function(df) {
   }
   
   df$estimates %>% ggplot()+
-    geom_point(mapping = aes(x = Interval, y = mean, fill = Group), color = "black", shape = 21, size = 3, position = position_dodge(width = 0.2))+
-    geom_line(mapping = aes(x = Interval, y = mean, group = Group), size = 0.2, color = "grey", position = position_dodge(width = 0.2)) +
-    geom_errorbar(aes(x = Interval, y = mean, group = Group, ymin=mean-eval(parse(text = e.m.)), 
+    geom_point(mapping = aes(x = Interval, y = mean, fill = Sample_identifier), color = "black", shape = 21, size = 3, position = position_dodge(width = 0.2))+
+    geom_line(mapping = aes(x = Interval, y = mean, group = Sample_identifier), size = 0.2, color = "grey", position = position_dodge(width = 0.2)) +
+    geom_errorbar(aes(x = Interval, y = mean, group = Sample_identifier, ymin=mean-eval(parse(text = e.m.)), 
                       ymax=mean+eval(parse(text = e.m.))),
                   color = "black", width=0.4, size = 0.5, position = position_dodge(width = 0.2))+
     scale_fill_brewer(palette = "Dark2")+
@@ -76,21 +72,17 @@ summary_plot_function2 <- function(df_well, df_rep, df_sample) {
   } else if(params$error_measure == "se"){
     e.m. <- "SE"
   }
-  
-  df_well$estimates <- df_well$estimates %>%  mutate(Date = substr(sample_id, start = nchar(sample_id)-15, stop = nchar(sample_id)),
-                                                     Group = substr(sample_id, start = 1, stop = nchar(sample_id)-19))  
-  
-  df_rep$estimates <- df_rep$estimates %>%  mutate(Date = substr(sample_id, start = nchar(sample_id)-15, stop = nchar(sample_id)),
-                                                   Group = substr(sample_id, start = 1, stop = nchar(sample_id)-19))
+  df_well$estimates <- df_well$estimates %>% separate(sample_id, into = c("Sample_identifier", "Replicate_identifier"), sep = "#")
+  df_rep$estimates <- df_rep$estimates %>% separate(sample_id, into = c("Sample_identifier", "Replicate_identifier"), sep = "#")
   
   
   df_well$estimates %>% ggplot()+
-    geom_beeswarm(aes(x =Group, y = mean, color = Date), cex=2, dodge.width = 0)+
-    geom_point(data = df_rep$estimates, aes(x=Group, y = mean, fill = Date), color = "Black", size = 4, shape = 21)+
-    geom_errorbar(data = df_sample$estimates, aes(x = Group, y = mean, ymin=mean-eval(parse(text = e.m.)), 
+    geom_beeswarm(aes(x =Sample_identifier, y = mean, color = Replicate_identifier), cex=2, dodge.width = 0)+
+    geom_point(data = df_rep$estimates, aes(x=Sample_identifier, y = mean, fill = Replicate_identifier), color = "Black", size = 4, shape = 21)+
+    geom_errorbar(data = df_sample$estimates, aes(x = Sample_identifier, y = mean, ymin=mean-eval(parse(text = e.m.)), 
                                                   ymax=mean+eval(parse(text = e.m.))),
                   color = "black", width=0.4, size = 0.5, position = position_dodge(width = 0.2))+
-    geom_point(data = df_sample$estimates, mapping = aes(x = Group, y = mean), fill = "black", color = "red", shape = 21, size = 2)+
+    geom_point(data = df_sample$estimates, mapping = aes(x = Sample_identifier, y = mean), fill = "black", color = "red", shape = 21, size = 2)+
     facet_wrap(~Interval)+
     xlab("Sample")+
     theme_bw()+
@@ -103,17 +95,21 @@ summary_plot_function2 <- function(df_well, df_rep, df_sample) {
 }
 
 plot1 <- function(well, replicate, sample){
+  
+  well <- well%>% separate(Sample, into = c("Sample_identifier", "Replicate_identifier"), sep = "#")
+  replicate <- replicate %>% separate(Sample, into = c("Sample_identifier", "Replicate_identifier"), sep = "#")
+  
   well %>%
     filter(variable != "Other") %>%
     ggplot(aes(x = "", y = mean))+
-    geom_beeswarm(aes(color = Date, shape = Group, group = Group), cex = 3, dodge.width = 0.8)+
-    geom_point(data = replicate, mapping = aes(x = "", y = mean, group = Group, fill = Date), 
+    geom_beeswarm(aes(color = Replicate_identifier, shape = Sample_identifier, group = Sample_identifier), cex = 3, dodge.width = 0.8)+
+    geom_point(data = replicate, mapping = aes(x = "", y = mean, group = Sample_identifier, fill = Replicate_identifier), 
                color = "black", shape = 21, size = 5, 
                position = position_dodge(width = 0.8))+
-    geom_point(data = sample, mapping = aes(x = "", y = mean, group = Sample), 
+    geom_point(data = sample, mapping = aes(x = "", y = mean, group = Sample_identifier), 
                fill = "black", color = "red", shape = 21, size = 1.5,
                position = position_dodge(width = 0.8))+
-    geom_errorbar(data = sample, aes(ymin=mean-eval(parse(text = error_measure)), ymax=mean+eval(parse(text = error_measure)), group = Sample), width=0.5, size = 0.8,
+    geom_errorbar(data = sample, aes(ymin=mean-eval(parse(text = error_measure)), ymax=mean+eval(parse(text = error_measure)), group = Sample_identifier), width=0.5, size = 0.8,
                   position=position_dodge(0.8))+
     scale_shape_manual(values= c(15,8, 17,3))+
     scale_color_brewer(palette = "Dark2")+
@@ -125,13 +121,16 @@ plot1 <- function(well, replicate, sample){
 }
 
 plot2 <- function(replicate, sample) {
+
+  replicate <- replicate %>% separate(Sample, into = c("Sample_identifier", "Replicate_identifier"), sep = "#")  
+  
   replicate %>%
     filter(variable != "Other") %>%
-    ggplot(aes(x = variable, y = mean, group = Group))+
-    geom_point(aes(fill = Group, shape = Date), size = 3, position = position_dodge(width = 0.6))+
-    geom_point(data = sample, mapping = aes(x = variable, y = mean, group = Sample), color = "black", size = 1.5,
+    ggplot(aes(x = variable, y = mean, group = Sample_identifier))+
+    geom_point(aes(fill = Sample_identifier, shape = Replicate_identifier), size = 3, position = position_dodge(width = 0.6))+
+    geom_point(data = sample, mapping = aes(x = variable, y = mean, group = Sample_identifier), color = "black", size = 1.5,
                position = position_dodge(width = 0.6))+
-    geom_errorbar(data = sample, aes(ymin=mean-eval(parse(text = error_measure)), ymax=mean+eval(parse(text = error_measure)), group = Sample), width=0.5, size = 0.8,
+    geom_errorbar(data = sample, aes(ymin=mean-eval(parse(text = error_measure)), ymax=mean+eval(parse(text = error_measure)), group = Sample_identifier), width=0.5, size = 0.8,
                   position=position_dodge(0.6))+
     scale_shape_manual(values= c(21,22))+
     scale_color_brewer(palette = "Dark2")+
@@ -142,11 +141,12 @@ plot2 <- function(replicate, sample) {
 }
 
 plot3 <- function(well) {
+  well <- well%>% separate(Sample, into = c("Sample_identifier", "Replicate_identifier"), sep = "#")
   well %>%
     filter(variable != "Other") %>%
     ggplot(aes(x = variable, y = mean))+
-    geom_boxplot(aes(fill = Group, color = Group), alpha = 0.5, position = position_dodge(width = 0.8),)+
-    geom_point(aes(color = Group), position = position_dodge(width = 0.8), size = 1)+
+    geom_boxplot(aes(fill = Sample_identifier, color = Sample_identifier), alpha = 0.5, position = position_dodge(width = 0.8),)+
+    geom_point(aes(color = Sample_identifier), position = position_dodge(width = 0.8), size = 1)+
     scale_color_brewer(palette = "Dark2")+
     scale_fill_brewer(palette = "Dark2")+
     xlab("Bio-Energetics")+
@@ -446,10 +446,6 @@ read_xlsx_set <- function(path_, pattern_){
     rm(raw, out_Hg)
     # ----------------
     
-    ### Add Protocol column substring of Group column before "-" character
-    d$Protocol <- substr(sub("-.*","", d$Group), start = 1, stop = 4)
-    ### add project column
-    d$Project  <- sub("#.*", "", sub(".*-","", d$Group))
     ### Add interval column
     d$Interval <- mapply(get_intervals, d$Measurement, y = acc_length_intervals)
     
@@ -458,14 +454,14 @@ read_xlsx_set <- function(path_, pattern_){
                                     ifelse(Interval == "Int3" | Interval == "Int4", Measurement + 3, Measurement + 6)))
     
     # the entries with blanks should be filtered, Must be here !
-    d <- d %>%filter(!is.na(Protocol))
+    d <- d %>%filter(!is.na(Group))
     
     ### Add log OCR,  log PER
     d$LOCR  <- log(d$OCR)
     d$LPER <- log(d$PER)
     
     ### Add sample ID string Followed # sing in Group Column
-    d <- d %>% mutate(sample_id = paste0(Project, " | ", exper_time))
+    d <- d %>% mutate(sample_id = Group)
     
     merged_d <- rbind(merged_d, d)
   }
@@ -534,7 +530,7 @@ idfy_sinleP_outlier <- function(DT, cut.point, x ) {
   # complete data
   dm_r <- DT %>%
     left_join(dm,
-              by = c("Measurement", "Well", "Group", "Time", "plate_id", "Protocol", "Interval"),
+              by = c("Measurement", "Well", "Group", "Time", "plate_id", "Interval"),
               suffix  = c("",".y") ) %>%
     mutate(is.out.p = replace_na(is.out.p, T)) %>%
     select(-c(contains("y"), "median_sqE", "mad_sqE", "sq_err", "int_mean", "x", "fitted"))
@@ -588,7 +584,7 @@ idfy_outlier <- function(DT, x, cut.well, cut.point ){
   }
   # complete data
   dm_r <- DT %>%  drop_na() %>%
-    left_join(dm, by = c("Measurement", "Well", "Group", "Time", "plate_id", "Protocol", "Interval"), suffix  = c("",".y") ) %>%
+    left_join(dm, by = c("Measurement", "Well", "Group", "Time", "plate_id" , "Interval"), suffix  = c("",".y") ) %>%
     mutate(is.out.w = replace_na(is.out.w, T)) %>%
     select(-c(contains("y"), "mad_mean_sqE", "sq_err", "int_mean"))
   # ------------ Single Point Outliars
@@ -627,7 +623,7 @@ idfy_outlier <- function(DT, x, cut.well, cut.point ){
 
   # complete data
   dm_r <- dm_r %>%
-    left_join(dm, by = c("Measurement", "Well", "Group", "Time", "plate_id", "Protocol", "Interval"), suffix = c("",".y") ) %>%
+    left_join(dm, by = c("Measurement", "Well", "Group", "Time", "plate_id" , "Interval"), suffix = c("",".y") ) %>%
     mutate(is.out.p = ifelse(is.out.w == T, NA, replace_na(is.out.p, T)),
            out      = ifelse(is.out.p == F & is.out.w == F, "NO",ifelse(is.out.w == T, "WELL", "SINGLE"))) %>%
     select(-c(contains("y"), "median_sqE", "mad_sqE", "sq_err", "int_mean"))
@@ -935,133 +931,135 @@ compute_bioenergetics_sample <- function(dm_r, method) {
   dr <- dm_r %>%
     filter(is.out.p == FALSE)
   
+  dr <- dr %>% separate(Group, into = c("Sample_identifier", "Replicate_identifier"), sep = "#")
+  
   dr$x <- dr[[method]]
   # we are using median instead !!!
   estim_mean <- dr %>%
-    group_by(Group, Interval) %>%
+    group_by(Sample_identifier, Interval) %>%
     summarise(mean = mean(x), SD = sd(x), SE = sd(x)/sqrt(n()), size = n(), CV = (SD/mean)*100 )
   
   # form datafames
-  estimates  <- as.data.frame(cast(estim_mean, Group~Interval, value = "mean"))
-  deviations <- as.data.frame(cast(estim_mean, Group~Interval, value = "SD"))
-  SErrs      <- as.data.frame(cast(estim_mean, Group~Interval, value = "SE"))
-  numbers    <- as.data.frame(cast(estim_mean, Group~Interval, value = "size"))
-  CVs        <- as.data.frame(cast(estim_mean, Group~Interval, value = "CV"))
+  estimates  <- as.data.frame(cast(estim_mean, Sample_identifier~Interval, value = "mean"))
+  deviations <- as.data.frame(cast(estim_mean, Sample_identifier~Interval, value = "SD"))
+  SErrs      <- as.data.frame(cast(estim_mean, Sample_identifier~Interval, value = "SE"))
+  numbers    <- as.data.frame(cast(estim_mean, Sample_identifier~Interval, value = "size"))
+  CVs        <- as.data.frame(cast(estim_mean, Sample_identifier~Interval, value = "CV"))
   
   # compute Bioenergetics according to the method used
   
   if (method == "OCR") {
     # difference based bioenergetics
     bio_e <- estimates %>%
-      mutate(Sample           = Group,
+      mutate(Sample_identifier           = Sample_identifier,
              Basal.Resp       = Int1 - Int4,
              ATP.linked.Resp  = Int1 - Int2,
              Proton.Leak      = Int2 - Int4,
              Spare.Resp.Cpcty = Int3 - Int1,
              Maximal.Resp     = Int3 - Int4,
              Non.Mito.Resp    = Int4) %>%
-      select(-c("Int1", "Int2", "Int3", "Int4", "Group"))
+      select(-c("Int1", "Int2", "Int3", "Int4"))
     # standard errors of mean differences
     sd_n   <- cbind(sd = deviations, n = numbers)
     st_errors <- sd_n %>%
-      mutate(Sample           = sd.Group,
+      mutate(Sample_identifier           = sd.Sample_identifier,
              Basal.Resp       = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)),
              ATP.linked.Resp  = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
              Proton.Leak      = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
              Spare.Resp.Cpcty = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int1^2)/n.Int1)),
              Maximal.Resp     = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int4^2)/n.Int4)),
              Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
-      select(c("Sample", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Spare.Resp.Cpcty", "Maximal.Resp", "Non.Mito.Resp"))
+      select(c("Sample_identifier", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Spare.Resp.Cpcty", "Maximal.Resp", "Non.Mito.Resp"))
     sd_errors <- sd_n %>% 
-      mutate(Sample           = sd.Group,
+      mutate(Sample_identifier           = sd.Sample_identifier,
              Basal.Resp       = sqrt((sd.Int1^2)+(sd.Int4^2)),
              ATP.linked.Resp  = sqrt((sd.Int1^2)+(sd.Int2^2)),
              Proton.Leak      = sqrt((sd.Int2^2)+(sd.Int4^2)),
              Spare.Resp.Cpcty = sqrt((sd.Int3^2)+(sd.Int1^2)),
              Maximal.Resp     = sqrt((sd.Int3^2)+(sd.Int4^2)),
              Non.Mito.Resp    = sd.Int4) %>%
-      select(c("Sample", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Spare.Resp.Cpcty", "Maximal.Resp", "Non.Mito.Resp"))
+      select(c("Sample_identifier", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Spare.Resp.Cpcty", "Maximal.Resp", "Non.Mito.Resp"))
     
     
   } else if (method == "LOCR") {
     # Ratio based bioenergetics
     bio_e <- estimates %>%
-      mutate(Sample               = Group,
+      mutate(Sample_identifier               = Sample_identifier,
              log.Basal.Resp       = Int1 - Int4,
              log.ATP.linked.Resp  = Int1 - Int2,
              log.Proton.Leak      = Int2 - Int4,
              log.Spare.Resp.Cpcty = Int3 - Int1,
              log.Maximal.Resp     = Int3 - Int4,
              log.Non.Mito.Resp    = Int4) %>%
-      select(-c("Int1", "Int2", "Int3", "Int4", "Group"))
+      select(-c("Int1", "Int2", "Int3", "Int4"))
     # standard errors of mean differences
     sd_n   <- cbind(sd = deviations, n = numbers)
     st_errors <- sd_n %>%
-      mutate(Sample               = sd.Group,
+      mutate(Sample_identifier               = sd.Sample_identifier,
              log.Basal.Resp       = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)),
              log.ATP.linked.Resp  = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
              log.Proton.Leak      = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
              log.Spare.Resp.Cpcty = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int1^2)/n.Int1)),
              log.Maximal.Resp     = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int4^2)/n.Int4)),
              log.Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
-      select(c("Sample", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Spare.Resp.Cpcty",
+      select(c("Sample_identifier", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Spare.Resp.Cpcty",
                "log.Maximal.Resp", "log.Non.Mito.Resp"))
     sd_errors <- sd_n %>% 
-      mutate(Sample           = sd.Group,
+      mutate(Sample_identifier           = sd.Sample_identifier,
              log.Basal.Resp       = sqrt((sd.Int1^2)+(sd.Int4^2)),
              log.ATP.linked.Resp  = sqrt((sd.Int1^2)+(sd.Int2^2)),
              log.Proton.Leak      = sqrt((sd.Int2^2)+(sd.Int4^2)),
              log.Spare.Resp.Cpcty = sqrt((sd.Int3^2)+(sd.Int1^2)),
              log.Maximal.Resp     = sqrt((sd.Int3^2)+(sd.Int4^2)),
              log.Non.Mito.Resp    = sd.Int4) %>%
-      select(c("Sample", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Spare.Resp.Cpcty",
+      select(c("Sample_identifier", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Spare.Resp.Cpcty",
                "log.Maximal.Resp", "log.Non.Mito.Resp"))
     
   } else if (method == "PER") {
     bio_e <- estimates %>%
-      mutate(Sample            = Group,
+      mutate(Sample_identifier            = Sample_identifier,
              Basal.PER         = Int1,
              Max.PER           = Int2,
              Glyco.Rsrv.Cpcty  = Int2 - Int1) %>%
-      select(c("Sample", "Basal.PER", "Max.PER", "Glyco.Rsrv.Cpcty"))
+      select(c("Sample_identifier", "Basal.PER", "Max.PER", "Glyco.Rsrv.Cpcty"))
     
     # standard errors of mean differences
     sd_n   <- cbind(sd = deviations, n = numbers)
     st_errors <- sd_n %>%
-      mutate(Sample            = sd.Group,
+      mutate(Sample_identifier            = sd.Sample_identifier,
              Basal.PER         = sqrt(((sd.Int1^2)/n.Int1)),
              Max.PER           = sqrt(((sd.Int2^2)/n.Int2)),
              Glyco.Rsrv.Cpcty  = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int1^2)/n.Int1))) %>%
-      select(c("Sample", "Basal.PER", "Max.PER", "Glyco.Rsrv.Cpcty"))
+      select(c("Sample_identifier", "Basal.PER", "Max.PER", "Glyco.Rsrv.Cpcty"))
       
     sd_errors <- sd_n %>%
-      mutate(Sample            = sd.Group,
+      mutate(Sample_identifier            = sd.Sample_identifier,
              Basal.PER         = sqrt(sd.Int1^2),
              Max.PER           = sqrt(sd.Int2^2),
              Glyco.Rsrv.Cpcty  = sqrt(sd.Int2^2+sd.Int1^2)) %>%
-      select(c("Sample", "Basal.PER", "Max.PER", "Glyco.Rsrv.Cpcty"))
+      select(c("Sample_identifier", "Basal.PER", "Max.PER", "Glyco.Rsrv.Cpcty"))
   } else if (method == "LPER") {
     bio_e <- estimates %>%
-      mutate(Sample                = Group,
+      mutate(Sample_identifier                = Sample_identifier,
              log.Basal.PER         = Int1,
              log.Max.PER           = Int2,
              log.Glyco.Rsrv.Cpcty  = Int2 - Int1) %>%
-      select(c("Sample", "log.Basal.PER", "log.Max.PER", "log.Glyco.Rsrv.Cpcty"))
+      select(c("Sample_identifier", "log.Basal.PER", "log.Max.PER", "log.Glyco.Rsrv.Cpcty"))
     
     # standard errors of mean differences
     sd_n   <- cbind(sd = deviations, n = numbers)
     st_errors <- sd_n %>%
-      mutate(Sample                = sd.Group,
+      mutate(Sample_identifier                = sd.Sample_identifier,
              log.Basal.PER         = sqrt(((sd.Int1^2)/n.Int1)),
              log.Max.PER           = sqrt(((sd.Int2^2)/n.Int2)),
              log.Glyco.Rsrv.Cpcty  = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int1^2)/n.Int1))) %>%
-      select(c("Sample", "log.Basal.PER", "log.Max.PER", "log.Glyco.Rsrv.Cpcty"))
+      select(c("Sample_identifier", "log.Basal.PER", "log.Max.PER", "log.Glyco.Rsrv.Cpcty"))
     sd_errors <- sd_n %>%
-      mutate(Sample            = sd.Group,
+      mutate(Sample_identifier            = sd.Sample_identifier,
              log.Basal.PER         = sqrt(sd.Int1^2),
              log.Max.PER           = sqrt(sd.Int2^2),
              log.Glyco.Rsrv.Cpcty  = sqrt(sd.Int2^2+sd.Int1^2)) %>%
-      select(c("Sample", "log.Basal.PER", "log.Max.PER", "log.Glyco.Rsrv.Cpcty"))    
+      select(c("Sample_identifier", "log.Basal.PER", "log.Max.PER", "log.Glyco.Rsrv.Cpcty"))    
   }
   return(list(bioenergetics = bio_e,standard.deviations = sd_errors, standard.errors = st_errors, estimates = estim_mean ))
 }
