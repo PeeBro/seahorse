@@ -4,8 +4,8 @@ output:
   html_document:
     number_sections: true
 params:
-  input_folder: "3 intervals2_test"
-  error_measure: "se"
+  input_folder: "3 intervals2_train"
+  error_measure: "sd"
 editor_options: 
   chunk_output_type: console
 ---
@@ -89,7 +89,7 @@ for (folder in knit_folders) {
 
 
 # Initialize the knitting process
-# rmarkdown::render(here('Experiments', "OCR+PER-Pipeline-THREE-INTERVALS.Rmd"), output_dir = OUTPUT_PATH)
+rmarkdown::render(here('Experiments', "OCR+PER-Pipeline-THREE-INTERVALS.Rmd"), output_dir = OUTPUT_PATH)
 ```
 
 <br>
@@ -183,7 +183,7 @@ sumar <- d_OCR %>%
 inter <- d_OCR %>% 
   group_by(sample_id) %>% 
   summarise(n_inter = length(unique(Interval))) %>% 
-  filter(n_inter != 4)
+  filter(n_inter != 3)
 
 d_OCR <- d_OCR %>% 
   filter(! sample_id %in% unique(sumar$sample_id))

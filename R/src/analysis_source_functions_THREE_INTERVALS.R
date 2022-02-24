@@ -326,7 +326,7 @@ read_xlsx_set <- function(path_, pattern_){
     intervals <- read_xlsx(x,
                            sheet = "Assay Configuration", 
                            range = "C47:F47", col_names = c("1","2","3","4"))
-    
+    intervals <- intervals %>% select_if(!is.na(.))
     
     length_intervals <- as.integer(sub(".*: ", "", intervals))
     acc_length_intervals <- as.data.frame(cumsum(length_intervals))
@@ -361,7 +361,7 @@ read_xlsx_set <- function(path_, pattern_){
       ungroup() %>% 
       group_by(Well) %>%
       summarise(average_mmHg = mean(`O2 (mmHg)`), # Calculates average Hg of the measurements (first tick of each) in interval 1 for each well
-                out          = ifelse(average_mmHg > 160 | average_mmHg < 140, T, F )) %>%
+                out          = ifelse(average_mmHg > 160 | average_mmHg < 133, T, F )) %>%
       filter(out == T)
     
     # remove Unassigned wells
@@ -448,10 +448,8 @@ read_xlsx_set <- function(path_, pattern_){
     
     ### Add interval column
     d$Interval <- mapply(get_intervals, d$Measurement, y = acc_length_intervals)
-    
-    ### Add column with time on experiment scale
-    d <- d %>% mutate(Time = ifelse(Interval == "Int1" | Interval == "Int2", Measurement,
-                                    ifelse(Interval == "Int3" | Interval == "Int4", Measurement + 3, Measurement + 6)))
+    d <- d %>% mutate(Interval = replace(Interval, Interval == "Int3", "Int4"))
+
     
     # the entries with blanks should be filtered, Must be here !
     d <- d %>%filter(!is.na(Group))
@@ -530,7 +528,7 @@ idfy_sinleP_outlier <- function(DT, cut.point, x ) {
   # complete data
   dm_r <- DT %>%
     left_join(dm,
-              by = c("Measurement", "Well", "Group", "Time", "plate_id", "Interval"),
+              by = c("Measurement", "Well", "Group", "plate_id", "Interval"),
               suffix  = c("",".y") ) %>%
     mutate(is.out.p = replace_na(is.out.p, T)) %>%
     select(-c(contains("y"), "median_sqE", "mad_sqE", "sq_err", "int_mean", "x", "fitted"))
@@ -584,7 +582,7 @@ idfy_outlier <- function(DT, x, cut.well, cut.point ){
   }
   # complete data
   dm_r <- DT %>%  drop_na() %>%
-    left_join(dm, by = c("Measurement", "Well", "Group", "Time", "plate_id" , "Interval"), suffix  = c("",".y") ) %>%
+    left_join(dm, by = c("Measurement", "Well", "Group",  "plate_id" , "Interval"), suffix  = c("",".y") ) %>%
     mutate(is.out.w = replace_na(is.out.w, T)) %>%
     select(-c(contains("y"), "mad_mean_sqE", "sq_err", "int_mean"))
   # ------------ Single Point Outliars
@@ -623,7 +621,7 @@ idfy_outlier <- function(DT, x, cut.well, cut.point ){
   
   # complete data
   dm_r <- dm_r %>%
-    left_join(dm, by = c("Measurement", "Well", "Group", "Time", "plate_id" , "Interval"), suffix = c("",".y") ) %>%
+    left_join(dm, by = c("Measurement", "Well", "Group",  "plate_id" , "Interval"), suffix = c("",".y") ) %>%
     mutate(is.out.p = ifelse(is.out.w == T, NA, replace_na(is.out.p, T)),
            out      = ifelse(is.out.p == F & is.out.w == F, "NO",ifelse(is.out.w == T, "WELL", "SINGLE"))) %>%
     select(-c(contains("y"), "median_sqE", "mad_sqE", "sq_err", "int_mean"))
@@ -663,10 +661,8 @@ compute_bioenergetics_replicate <- function(dm_r, method) {
              Basal.Resp       = Int1 - Int4,
              ATP.linked.Resp  = Int1 - Int2,
              Proton.Leak      = Int2 - Int4,
-             Spare.Resp.Cpcty = Int3 - Int1,
-             Maximal.Resp     = Int3 - Int4,
              Non.Mito.Resp    = Int4) %>%
-      select(-c("Int1", "Int2", "Int3", "Int4", "sample_id"))
+      select(-c("Int1", "Int2", "Int4", "sample_id"))
     # standard errors of mean differences
     sd_n   <- cbind(sd = deviations, n = numbers)
     st_errors <- sd_n %>%
@@ -674,20 +670,16 @@ compute_bioenergetics_replicate <- function(dm_r, method) {
              Basal.Resp       = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)),
              ATP.linked.Resp  = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
              Proton.Leak      = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
-             Spare.Resp.Cpcty = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int1^2)/n.Int1)),
-             Maximal.Resp     = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int4^2)/n.Int4)),
              Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
-      select(c("Sample", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Spare.Resp.Cpcty", "Maximal.Resp", "Non.Mito.Resp"))
+      select(c("Sample", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Non.Mito.Resp"))
     
     sd_errors <- sd_n %>% 
       mutate(Sample           = sd.sample_id,
              Basal.Resp       = sqrt((sd.Int1^2)+(sd.Int4^2)),
              ATP.linked.Resp  = sqrt((sd.Int1^2)+(sd.Int2^2)),
              Proton.Leak      = sqrt((sd.Int2^2)+(sd.Int4^2)),
-             Spare.Resp.Cpcty = sqrt((sd.Int3^2)+(sd.Int1^2)),
-             Maximal.Resp     = sqrt((sd.Int3^2)+(sd.Int4^2)),
              Non.Mito.Resp    = sd.Int4) %>%
-      select(c("Sample", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Spare.Resp.Cpcty", "Maximal.Resp", "Non.Mito.Resp"))
+      select(c("Sample", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Non.Mito.Resp"))
     
   } else if (method == "LOCR") {
     # Ratio based bioenergetics
@@ -696,10 +688,8 @@ compute_bioenergetics_replicate <- function(dm_r, method) {
              log.Basal.Resp       = Int1 - Int4,
              log.ATP.linked.Resp  = Int1 - Int2,
              log.Proton.Leak      = Int2 - Int4,
-             log.Spare.Resp.Cpcty = Int3 - Int1,
-             log.Maximal.Resp     = Int3 - Int4,
              log.Non.Mito.Resp    = Int4) %>%
-      select(-c("Int1", "Int2", "Int3", "Int4", "sample_id"))
+      select(-c("Int1", "Int2", "Int4", "sample_id"))
     # standard errors of mean differences
     sd_n   <- cbind(sd = deviations, n = numbers)
     st_errors <- sd_n %>%
@@ -707,22 +697,16 @@ compute_bioenergetics_replicate <- function(dm_r, method) {
              log.Basal.Resp       = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)),
              log.ATP.linked.Resp  = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
              log.Proton.Leak      = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
-             log.Spare.Resp.Cpcty = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int1^2)/n.Int1)),
-             log.Maximal.Resp     = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int4^2)/n.Int4)),
              log.Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
-      select(c("Sample", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Spare.Resp.Cpcty",
-               "log.Maximal.Resp", "log.Non.Mito.Resp"))
+      select(c("Sample", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Non.Mito.Resp"))
     
     sd_errors <- sd_n %>% 
       mutate(Sample           = sd.sample_id,
              log.Basal.Resp       = sqrt((sd.Int1^2)+(sd.Int4^2)),
              log.ATP.linked.Resp  = sqrt((sd.Int1^2)+(sd.Int2^2)),
              log.Proton.Leak      = sqrt((sd.Int2^2)+(sd.Int4^2)),
-             log.Spare.Resp.Cpcty = sqrt((sd.Int3^2)+(sd.Int1^2)),
-             log.Maximal.Resp     = sqrt((sd.Int3^2)+(sd.Int4^2)),
              log.Non.Mito.Resp    = sd.Int4) %>%
-      select(c("Sample", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Spare.Resp.Cpcty",
-               "log.Maximal.Resp", "log.Non.Mito.Resp"))
+      select(c("Sample", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Non.Mito.Resp"))
     
     
   } else if (method == "PER") {
@@ -802,10 +786,8 @@ compute_bioenergetics_well <- function(dm_r, method) {
              Basal.Resp       = Int1 - Int4,
              ATP.linked.Resp  = Int1 - Int2,
              Proton.Leak      = Int2 - Int4,
-             Spare.Resp.Cpcty = Int3 - Int1,
-             Maximal.Resp     = Int3 - Int4,
              Non.Mito.Resp    = Int4) %>%
-      select(-c("Int1", "Int2", "Int3", "Int4", "sample_id"))
+      select(-c("Int1", "Int2", "Int4", "sample_id"))
     # standard errors of mean differences
     sd_n   <- cbind(sd = deviations, n = numbers)
     st_errors <- sd_n %>%
@@ -813,10 +795,8 @@ compute_bioenergetics_well <- function(dm_r, method) {
              Basal.Resp       = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)),
              ATP.linked.Resp  = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
              Proton.Leak      = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
-             Spare.Resp.Cpcty = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int1^2)/n.Int1)),
-             Maximal.Resp     = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int4^2)/n.Int4)),
              Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
-      select(c("Sample","n.Well", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Spare.Resp.Cpcty", "Maximal.Resp", "Non.Mito.Resp"))
+      select(c("Sample","n.Well", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Non.Mito.Resp"))
     colnames(st_errors)[2] <- "Well"
     
     
@@ -825,10 +805,8 @@ compute_bioenergetics_well <- function(dm_r, method) {
              Basal.Resp       = sqrt((sd.Int1^2)+(sd.Int4^2)),
              ATP.linked.Resp  = sqrt((sd.Int1^2)+(sd.Int2^2)),
              Proton.Leak      = sqrt((sd.Int2^2)+(sd.Int4^2)),
-             Spare.Resp.Cpcty = sqrt((sd.Int3^2)+(sd.Int1^2)),
-             Maximal.Resp     = sqrt((sd.Int3^2)+(sd.Int4^2)),
              Non.Mito.Resp    = sd.Int4) %>%
-      select(c("Sample", "n.Well", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Spare.Resp.Cpcty", "Maximal.Resp", "Non.Mito.Resp"))
+      select(c("Sample", "n.Well", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Non.Mito.Resp"))
     colnames(st_errors)[2] <- "Well"
     
     
@@ -839,10 +817,8 @@ compute_bioenergetics_well <- function(dm_r, method) {
              log.Basal.Resp       = Int1 - Int4,
              log.ATP.linked.Resp  = Int1 - Int2,
              log.Proton.Leak      = Int2 - Int4,
-             log.Spare.Resp.Cpcty = Int3 - Int1,
-             log.Maximal.Resp     = Int3 - Int4,
              log.Non.Mito.Resp    = Int4) %>%
-      select(-c("Int1", "Int2", "Int3", "Int4", "sample_id"))
+      select(-c("Int1", "Int2", "Int4", "sample_id"))
     # standard errors of mean differences
     sd_n   <- cbind(sd = deviations, n = numbers)
     st_errors <- sd_n %>%
@@ -850,11 +826,8 @@ compute_bioenergetics_well <- function(dm_r, method) {
              log.Basal.Resp       = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)),
              log.ATP.linked.Resp  = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
              log.Proton.Leak      = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
-             log.Spare.Resp.Cpcty = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int1^2)/n.Int1)),
-             log.Maximal.Resp     = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int4^2)/n.Int4)),
              log.Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
-      select(c("Sample", "n.Well", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Spare.Resp.Cpcty",
-               "log.Maximal.Resp", "log.Non.Mito.Resp"))
+      select(c("Sample", "n.Well", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Non.Mito.Resp"))
     colnames(st_errors)[2] <- "Well"
     
     sd_errors <- sd_n %>% 
@@ -862,11 +835,8 @@ compute_bioenergetics_well <- function(dm_r, method) {
              log.Basal.Resp       = sqrt((sd.Int1^2)+(sd.Int4^2)),
              log.ATP.linked.Resp  = sqrt((sd.Int1^2)+(sd.Int2^2)),
              log.Proton.Leak      = sqrt((sd.Int2^2)+(sd.Int4^2)),
-             log.Spare.Resp.Cpcty = sqrt((sd.Int3^2)+(sd.Int1^2)),
-             log.Maximal.Resp     = sqrt((sd.Int3^2)+(sd.Int4^2)),
              log.Non.Mito.Resp    = sd.Int4) %>%
-      select(c("Sample", "n.Well", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Spare.Resp.Cpcty",
-               "log.Maximal.Resp", "log.Non.Mito.Resp"))
+      select(c("Sample", "n.Well", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Non.Mito.Resp"))
     colnames(st_errors)[2] <- "Well"
     
     
@@ -955,10 +925,8 @@ compute_bioenergetics_sample <- function(dm_r, method) {
              Basal.Resp       = Int1 - Int4,
              ATP.linked.Resp  = Int1 - Int2,
              Proton.Leak      = Int2 - Int4,
-             Spare.Resp.Cpcty = Int3 - Int1,
-             Maximal.Resp     = Int3 - Int4,
              Non.Mito.Resp    = Int4) %>%
-      select(-c("Int1", "Int2", "Int3", "Int4"))
+      select(-c("Int1", "Int2", "Int4"))
     # standard errors of mean differences
     sd_n   <- cbind(sd = deviations, n = numbers)
     st_errors <- sd_n %>%
@@ -966,19 +934,15 @@ compute_bioenergetics_sample <- function(dm_r, method) {
              Basal.Resp       = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)),
              ATP.linked.Resp  = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
              Proton.Leak      = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
-             Spare.Resp.Cpcty = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int1^2)/n.Int1)),
-             Maximal.Resp     = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int4^2)/n.Int4)),
              Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
-      select(c("Sample_identifier", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Spare.Resp.Cpcty", "Maximal.Resp", "Non.Mito.Resp"))
+      select(c("Sample_identifier", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Non.Mito.Resp"))
     sd_errors <- sd_n %>% 
       mutate(Sample_identifier           = sd.Sample_identifier,
              Basal.Resp       = sqrt((sd.Int1^2)+(sd.Int4^2)),
              ATP.linked.Resp  = sqrt((sd.Int1^2)+(sd.Int2^2)),
              Proton.Leak      = sqrt((sd.Int2^2)+(sd.Int4^2)),
-             Spare.Resp.Cpcty = sqrt((sd.Int3^2)+(sd.Int1^2)),
-             Maximal.Resp     = sqrt((sd.Int3^2)+(sd.Int4^2)),
              Non.Mito.Resp    = sd.Int4) %>%
-      select(c("Sample_identifier", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Spare.Resp.Cpcty", "Maximal.Resp", "Non.Mito.Resp"))
+      select(c("Sample_identifier", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Non.Mito.Resp"))
     
     
   } else if (method == "LOCR") {
@@ -988,10 +952,8 @@ compute_bioenergetics_sample <- function(dm_r, method) {
              log.Basal.Resp       = Int1 - Int4,
              log.ATP.linked.Resp  = Int1 - Int2,
              log.Proton.Leak      = Int2 - Int4,
-             log.Spare.Resp.Cpcty = Int3 - Int1,
-             log.Maximal.Resp     = Int3 - Int4,
              log.Non.Mito.Resp    = Int4) %>%
-      select(-c("Int1", "Int2", "Int3", "Int4"))
+      select(-c("Int1", "Int2", "Int4"))
     # standard errors of mean differences
     sd_n   <- cbind(sd = deviations, n = numbers)
     st_errors <- sd_n %>%
@@ -999,21 +961,15 @@ compute_bioenergetics_sample <- function(dm_r, method) {
              log.Basal.Resp       = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)),
              log.ATP.linked.Resp  = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
              log.Proton.Leak      = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
-             log.Spare.Resp.Cpcty = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int1^2)/n.Int1)),
-             log.Maximal.Resp     = sqrt(((sd.Int3^2)/n.Int3)+((sd.Int4^2)/n.Int4)),
              log.Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
-      select(c("Sample_identifier", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Spare.Resp.Cpcty",
-               "log.Maximal.Resp", "log.Non.Mito.Resp"))
+      select(c("Sample_identifier", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Non.Mito.Resp"))
     sd_errors <- sd_n %>% 
       mutate(Sample_identifier           = sd.Sample_identifier,
              log.Basal.Resp       = sqrt((sd.Int1^2)+(sd.Int4^2)),
              log.ATP.linked.Resp  = sqrt((sd.Int1^2)+(sd.Int2^2)),
              log.Proton.Leak      = sqrt((sd.Int2^2)+(sd.Int4^2)),
-             log.Spare.Resp.Cpcty = sqrt((sd.Int3^2)+(sd.Int1^2)),
-             log.Maximal.Resp     = sqrt((sd.Int3^2)+(sd.Int4^2)),
              log.Non.Mito.Resp    = sd.Int4) %>%
-      select(c("Sample_identifier", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Spare.Resp.Cpcty",
-               "log.Maximal.Resp", "log.Non.Mito.Resp"))
+      select(c("Sample_identifier", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Non.Mito.Resp"))
     
   } else if (method == "PER") {
     bio_e <- estimates %>%
