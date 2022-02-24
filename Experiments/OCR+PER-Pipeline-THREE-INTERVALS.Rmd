@@ -100,9 +100,7 @@ Steps performed: <br>
 - Load data
 
 ```{r, message=TRUE, warning=FALSE, echo=FALSE, paged.print=FALSE}
-
-# Read The the separate xlsx files from folder, Specify entire path to folder.
-source(here("R", "src", "analysis_source_functions_THREE_INTERVALS.R"))
+# Read The the separate xlsx files from folder, Specify entire path to folder. 
 data <- read_xlsx_set(INPUT_PATH, ".xlsx")  
 dm <- data$rates
 
@@ -185,7 +183,7 @@ sumar <- d_OCR %>%
 inter <- d_OCR %>% 
   group_by(sample_id) %>% 
   summarise(n_inter = length(unique(Interval))) %>% 
-  filter(n_inter != 3)
+  filter(n_inter != 4)
 
 d_OCR <- d_OCR %>% 
   filter(! sample_id %in% unique(sumar$sample_id))
@@ -274,7 +272,6 @@ norm.be.replicate <- compute_bioenergetics_replicate(dr_ocr, "OCR")
 log.be.replicate  <- compute_bioenergetics_replicate(dr_ocr, "LOCR")
 norm.be.sample <- compute_bioenergetics_sample(dr_ocr, "OCR")
 log.be.sample <- compute_bioenergetics_sample(dr_ocr, "LOCR")
-
 
 write_xlsx(norm.be.well$estimates, paste0(OUTPUT_PATH,"/Estimated_values-OCR-well.xlsx"))
 write_xlsx(log.be.well$estimates, paste0(OUTPUT_PATH,"/Estimates_values-LOCR-well.xlsx"))
@@ -801,21 +798,23 @@ total.max.well <- total.max.well %>% mutate(min_max = "Maximum")
 
 # Merge to create min/max sample data
 total.well <- rbind(total.min.well, total.max.well)
+total.well <- total.well%>% separate(Sample, into = c("Sample_identifier", "Replicate_identifier"), sep = "#")
 
 # Get basal data for each sample
 basal.OCR.sample <- n.bio.sample %>%
   filter(variable %in% c("Basal.Resp"))
 basal.PER.sample <- n.bio.PER.sample %>%
   filter(variable %in% c("Basal.PER"))
-total.min.sample <- merge(x = basal.OCR.sample, y = basal.PER.sample,by = c("Sample"), suffixes = c(".OCR", ".PER"))
+total.min.sample <- merge(x = basal.OCR.sample, y = basal.PER.sample,by = c("Sample_identifier"), suffixes = c(".OCR", ".PER"))
 total.min.sample <- total.min.sample %>% mutate(min_max = "Basal")
+
 
 # Get max data for each sample
 max.PER.sample <- n.bio.PER.sample %>%
   filter(variable %in% c("Max.PER"))
 max.OCR.sample <- n.bio.sample %>%
   filter(variable %in% c("Maximal.Resp"))
-total.max.sample <- merge(x = max.PER.sample, y = max.OCR.sample,by = c("Sample"), suffixes = c(".PER", ".OCR"))
+total.max.sample <- merge(x = max.PER.sample, y = max.OCR.sample,by = c("Sample_identifier"), suffixes = c(".PER", ".OCR"))
 total.max.sample <- total.max.sample %>% mutate(min_max = "Maximum")
 
 # Merge to create min/max sample data
@@ -826,9 +825,9 @@ total.sample <- rbind(total.min.sample, total.max.sample)
 ```{r echo = FALSE, fig.height= 12}
 total.well %>% ggplot()+
   ggtitle("PER versus OCR")+
-  geom_point(mapping = aes(y = mean.PER, x = mean.OCR, fill = Group.PER), shape = 21)+
+  geom_point(mapping = aes(y = mean.PER, x = mean.OCR, fill = Sample_identifier), shape = 21)+
   facet_wrap(~min_max)+
-  geom_point(data = total.sample, aes(y = mean.PER, x = mean.OCR, fill = Sample), size = 4, shape = 21)+
+  geom_point(data = total.sample, aes(y = mean.PER, x = mean.OCR, fill = Sample_identifier), size = 4, shape = 21)+
   geom_errorbar(data = total.sample, 
                 aes(y = mean.PER, x = mean.OCR, 
                     ymin=mean.PER-eval(parse(text = paste(params$error_measure, ".PER", sep = ""))), 
@@ -845,6 +844,6 @@ total.well %>% ggplot()+
   ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))+
   theme_bw()+
   coord_equal(ratio = 1)+
-  labs(fill = "Sample")+
+  labs(fill = "Sample_identifier")+
     NULL
 ```
