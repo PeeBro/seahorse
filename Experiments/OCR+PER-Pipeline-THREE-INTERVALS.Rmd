@@ -1,0 +1,849 @@
+---
+title: "OCR+PER-Pipeline-FOUR-INTERVALS"
+output: 
+  html_document:
+    number_sections: true
+params:
+  input_folder: "GtF_2021-2_FAKE"
+  error_measure: "se"
+editor_options: 
+  chunk_output_type: console
+---
+<br>
+<br>
+<br>
+<br>
+
+# HOW TO USE
+
+Step 1: Make a new folder in the Data/INPUT folder and place your excel files there <br>
+Step 2: Make sure that you have not opened any of the files in the folder <br>
+Step 3: Write the name of the folder above. Use quotes like this "My_folder" <br>
+Step 4: Choose an error measure. Use quotes "sd" or "se"
+Step 4: Run the code chunk below <br>
+
+
+
+```{r eval = FALSE, include=FALSE}
+# Set path and load the package "here"
+
+here::i_am("Experiments/OCR+PER-Pipeline.Rmd")
+
+if(!("here" %in% installed.packages()[, "Package"])) {
+  install.packages("here")
+}
+library(here)       # Used to set the path to the package dir. on the machine 
+
+
+
+# Check if all packages are installed
+source(here("R", "src", "config_file.R"))
+
+
+# Load libraries
+library(tools)
+library(reshape2)
+library(reshape)
+library(tidyverse)
+library(readxl)     # Read xlsx file
+library(knitr)      # Used for tables 
+library(kableExtra)
+library(shiny)
+library(ggbeeswarm)
+library(writexl)
+
+
+
+# Get input folder and error_measure
+input_folder <- params$input_folder
+error_measure <- params$error_measure
+
+# Create output folder
+
+output_folder <- sprintf("%s_OUTPUT", input_folder)
+o_path <- here("Data", "OUTPUT", output_folder)
+
+if(!dir.exists(o_path)){
+  dir.create(path = o_path)
+}
+
+
+# source the functions used in analysis
+source(here("R", "src", "analysis_source_functions_FOUR_INTERVALS.R"))
+
+# INPUT_PATH  <- (here('/Data/INPUT/ConBIS')) # path to the folder of interest
+INPUT_PATH  <- (here('Data', "INPUT", input_folder)) # path to the folder of interest
+# OUTPUT_PATH <- (here('/Data/OUTPUT/HF')) 
+OUTPUT_PATH <- (here('Data', "OUTPUT", output_folder))
+
+
+# Delete old knit files
+name_of_cache <- list.files(path = "./Experiments", pattern = "cache", include.dirs = TRUE) # Finds the correct folder by it self. Deletes ALL cache folders.
+knit_cache <- here('Experiments', name_of_cache)
+knit_files <- here("Data", "OUTPUT", output_folder, "OCR+PER-Pipeline_files")
+knit_figures <- here("Data", "OUTPUT", output_folder, "OCR+PER-Pipeline-FOUR-INTERVALS_files")
+knit_folders <- c(knit_cache, knit_files, knit_figures)
+for (folder in knit_folders) {
+  if (file.exists(folder))
+  unlink(folder, recursive = T)
+}
+
+
+# Initialize the knitting process
+rmarkdown::render(here('Experiments', "OCR+PER-Pipeline-FOUR-INTERVALS.Rmd"), output_dir = OUTPUT_PATH)
+```
+
+<br>
+<br>
+
+# Overview of data
+Steps performed: <br>
+- Load data
+
+```{r, message=TRUE, warning=FALSE, echo=FALSE, paged.print=FALSE}
+# Read The the separate xlsx files from folder, Specify entire path to folder. 
+data <- read_xlsx_set(INPUT_PATH, ".xlsx")  
+dm <- data$rates
+
+```
+
+<br>
+<br>
+
+# Wells excluded from the analysis
+Steps performed: <br>
+- Remove unassigned wells <br>
+- Remove wells with OCR <= 10 in the first interval <br>
+- Remove bad backgrounds for OCR and PER separately <br>
+- Correct background for OCR and PER separately <br>
+- Normalize wells based on cell count (OCR/1000 cells and PER/1000 cells) <br>
+- Remove wells with no cell count measured <br>
+- Remove wells where OCR and PER is 0 <br>
+- Remove wells based on Hg measurements <br>
+
+```{r echo=FALSE}
+data$Hg_list %>%  
+  kable(caption="Wells removed. Out of 140-160 mmHg interval") %>% 
+  kable_styling()
+
+```
+
+```{r echo=FALSE}
+data$OCR_background %>%  
+  kable(caption="Background measurements not included in OCR correction") %>% 
+  kable_styling()
+
+```
+
+```{r echo=FALSE}
+data$PER_background %>%  
+  kable(caption="Background measurements not included in PER correction") %>% 
+  kable_styling()
+
+```
+
+```{r echo=FALSE}
+data$Zero_measurements %>%  
+  kable(caption="Empty measurements (OCR or PER = 0)") %>% 
+  kable_styling()
+
+```
+
+```{r echo=FALSE}
+data$No_cells_measured %>%  
+  kable(caption="Wells with no cells measured") %>% 
+  kable_styling()
+
+```
+
+```{r echo=FALSE}
+data$Bad_Cells %>%  
+  kable(caption="Wells with OCR < 10 in first interval") %>% 
+  kable_styling()
+
+```
+
+<br>
+<br>
+<br>
+
+# OCR 
+## Filter out irrelevant samples 
+Steps performed: <br>
+- Check that the number of intervals for each sample is four and that no sample has an interval with less than 18 measurements <br>
+```{r  echo=FALSE, message = FALSE}
+d_OCR  <- dm
+
+# filter out samples with an interval smaller than 18 measurements. Each interval consist of three or four measurements, so 18/3 = 6 wells should be present. (This approach should work because if individual measurements of wells are wrong (too high/low Hg) then the entire well is removed from the analysis. Thus we do only have "complete" wells with all measurements intact at this point.)
+sumar <- d_OCR %>%
+  group_by(sample_id, Interval) %>% 
+  summarise(n = n()) %>% 
+  filter(n < 18)
+
+# number of intervals has to be 4 or the well discarted 
+inter <- d_OCR %>% 
+  group_by(sample_id) %>% 
+  summarise(n_inter = length(unique(Interval))) %>% 
+  filter(n_inter != 4)
+
+d_OCR <- d_OCR %>% 
+  filter(! sample_id %in% unique(sumar$sample_id))
+
+d_OCR <- d_OCR %>% 
+  filter(! sample_id %in% unique(inter$sample_id))
+
+cat("Wells removed due lack of usable measurements (Less than six usable wells in any interval): ", paste(unique(sumar$sample_id), collapse = "\n"), sep = "\n")
+cat("Wells removed because there are not four intervals: ", paste(unique(inter$sample_id), collapse = "\n"), sep = "\n")
+```
+
+<br>
+
+## Identify and remove outliers
+Steps performed: <br>
+- Use an iterative process to remove outliers
+
+Removed outliers in each iteration: <br>
+```{r echo=FALSE}
+# Identify Outliars
+# DT = loaded dataframe
+# cut.well = threshold for well outliaer,
+# cut.point = threshold for point outliaer
+# x = Variable: "LOCR", "OCR
+
+dr_ocr <- idfy_sinleP_outlier(d_OCR, cut.point = 6, x = "LOCR")
+# clean enviroment
+rm(d_OCR)
+# write the data into file
+write_xlsx(dr_ocr, paste0(OUTPUT_PATH,"/.Data_removed_OCR.xlsx"))
+```
+
+```{r echo=FALSE, warning=FALSE, echo=FALSE}
+# amount of removed outliars
+dr_ocr %>%
+  group_by(sample_id, is.out.p) %>%
+  summarise(n = n()) %>%
+  group_by(sample_id) %>%
+  mutate(size = sum(n),
+         ptg = n / size *100,
+         percentage = paste(format(ptg, digits= 1, nsmall=2),"%")) %>%
+  filter(is.out.p == T) %>%
+  arrange(desc(ptg)) %>%
+  select(sample_id, percentage) %>%
+  kable(caption="Amount of removed outliers across samples") %>%
+  kable_styling(full_width = F)
+
+
+```
+
+<br>
+
+### Print schemes of removed points for all samples
+```{r echo=FALSE, echo=FALSE, cache = TRUE}
+
+for (smpl in unique(dr_ocr$sample_id)) {
+  d    <- filter(dr_ocr, sample_id == smpl)
+  ptg  <- nrow(filter(d, is.out.p == T))/nrow(d)*100
+  plot <- ggplot(d, aes(Time, OCR))+
+            ggtitle(paste0("ID: ", smpl, " |  Outliers: ", format(ptg, digits = 3), "%"))+
+            geom_line(aes(group = Well),size = 0.2, color = "grey") +
+            geom_point(aes(Time, OCR, color = is.out.p))+
+            guides(color=guide_legend(title="Outlier"))+
+            xlab("Measurement")+
+            # ylim(0,15)+
+            ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))
+
+  print(plot +theme_bw())
+}
+```
+
+<br>
+<br>
+<br>
+
+### Summary statistics for each sample after outlier removal
+Estimates are taken by mean of measurements from each interval in sample. Estimates are  stored together with other details about the intervals in files called <Method>-Estimated_values.xlsx in OUTPUT folder.
+
+If you want to see or change how they are computed see the function compute_bioenergetics_ ()in file analysis_source_functions.R
+
+```{r echo=FALSE}
+# The compute bionergetics functions does also calculate the estimates. Both are calculated here
+norm.be.well <- compute_bioenergetics_well(dr_ocr, "OCR")
+log.be.well <- compute_bioenergetics_well(dr_ocr, "LOCR")
+norm.be.replicate <- compute_bioenergetics_replicate(dr_ocr, "OCR")
+log.be.replicate  <- compute_bioenergetics_replicate(dr_ocr, "LOCR")
+norm.be.sample <- compute_bioenergetics_sample(dr_ocr, "OCR")
+log.be.sample <- compute_bioenergetics_sample(dr_ocr, "LOCR")
+
+
+write_xlsx(norm.be.well$estimates, paste0(OUTPUT_PATH,"/Estimated_values-OCR-well.xlsx"))
+write_xlsx(log.be.well$estimates, paste0(OUTPUT_PATH,"/Estimates_values-LOCR-well.xlsx"))
+write_xlsx(norm.be.replicate$estimates, paste0(OUTPUT_PATH,"/Estimated_values-OCR-replicates.xlsx"))
+write_xlsx(log.be.replicate$estimates, paste0(OUTPUT_PATH,"/Estimates_values-LOCR-replicates.xlsx"))
+write_xlsx(norm.be.sample$estimates, paste0(OUTPUT_PATH,"/Estimated_values-OCR-samples.xlsx"))
+write_xlsx(log.be.sample$estimates, paste0(OUTPUT_PATH,"/Estimates_values-LOCR-samples.xlsx"))
+```
+
+## Summary statistics for each sample
+```{r echo = FALSE}
+summary_plot_function(norm.be.sample)+
+    ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))+
+    ggtitle("OCR estimates sample summary (Outliers removed)")
+
+
+summary_plot_function(log.be.sample)+
+    ylab(expression("Mean LOCR value [log(pmol O"[2]*" /1000 cells)]"))+
+    ggtitle("LOCR estimates sample summary (Outliers removed)")
+```
+
+**Figure description:** <br> Colored points are the group mean of wells, and the errorbars shows the `r params$error_measure` of the well means for each group
+
+<br>
+<br>
+<br>
+<br>
+
+## Bioenergetics
+
+
+```{r echo=FALSE, echo=FALSE}
+# Print interval estimates
+norm.be.replicate$estimates[1:4,] %>%
+  kable(digits = 3, caption = "Example of estimates file ") %>%
+  kable_styling(full_width = F)
+```
+
+
+```{r, echo = FALSE,  fig.width = 8}
+summary_plot_function2(norm.be.well, norm.be.replicate, norm.be.sample)+
+    ggtitle("OCR estimates shown by well, replicate and sample")+
+    ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))
+
+
+summary_plot_function2(norm.be.well, norm.be.replicate, norm.be.sample)+
+    ggtitle("LOCR estimates shown by well, replicate and sample")+
+    ylab(expression("Mean LOCR value [log10(pmol O"[2]*" /1000 cells)]"))
+  
+```
+
+**Figure description:** <br> Each point is a well average. Colors indicate replicates, large points represent the group mean of wells, the bold black line is the sample mean of wells, and the errorbars shows the `r params$error_measure` of the well means for each group")
+
+<br>
+<br>
+<br>
+
+### Bioenergetics OCR
+Bioenergetics are computed from estimates, there there are two sets of bioenergetics provided.
+
+  1. Ratio Based, computed from log(OCR) estimates Located in OUTPUT/LogOCR-BioEnergetics.xlsx
+
+  2. Difference based, computed from OCR esimates Located in OUTPUT/OCR-BioEnergetics.xlsx
+If you want to see or change how they are computed see the function compute_bioenergetics_() in file analysis_source_functions.R
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
+# normal scale Bioenergetics
+# Prepare data frames with well, replicate and sample averages
+n.bio.well <- melt_bioenergetics_well(norm.be.well)
+n.bio.replicate <- melt_bioenergetics_replicate(norm.be.replicate)
+n.bio.sample <- melt_bioenergetics_sample(norm.be.sample)
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
+plot <- plot1(n.bio.well,n.bio.replicate, n.bio.sample) + 
+  ggtitle("Plot type 1A: Difference based natural scale Bio-Energetics OCR") + 
+  ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))
+plot
+```
+
+
+**Figure description:** <br> 
+Small symbols: Bioenergetics calculated for each well. <br> 
+Large dots: Indicate the mean of each replicate. <br>
+Errorbars and mean (black): Sample mean + errorbars indicating `r error_measure`. <br>
+**Which data is used:** <br> 
+Small symbols: All measurements are grouped by well, sample id (group name + date) and interval. This means we calculate the OCR estimates and bioenegetics for each individual well. Be aware that due to outlier removal of measurements, some bioenergetics can't be calculated for all wells. <br>
+Large dots: All measurements are grouped by each interval and sample id (group name + date). This means that we pool all wells for each replicate, calculate the average OCR values for each interval and calculate the bioenergetics. <br>
+Errorbars and mean: All measurements are pooled for each sample/plate across all replicates and the average OCR values are calculated for each interval, before the bioenergetics are calculated.
+
+<br>
+<br>
+<br>
+<br>
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
+plot <- plot2(n.bio.replicate, n.bio.sample)+
+  ggtitle("Plot type 2A: Difference based natural scale Bio-Energetics OCR")+
+  ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))
+plot
+```
+
+**Figure description:** <br> The plot shows the average bioenergetics estimates for the replicates and the entire samples. Colors indicate the individual samples (identified by sample name), and the shape indicate the time of analysis i.e. replicates. <br>
+**How the averages are calculated:** <br> 
+All measurements for each replicate is pooled, the average OCR estimates are calculated for each interval and from that the bioenergetics are calculated.
+
+<br>
+<br>
+<br>
+<br>
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
+plot <- plot3(n.bio.well) +
+  ggtitle("Plot type 3A: Difference based natural scale Bio-Energetics OCR")+
+  ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))
+plot
+```
+
+**Figure description:** <br> 
+Shows the bioenergetic estimates for each well. <br>
+**Which data is used:** <br> 
+All measurements are grouped by well, sample id (group name + date) and interval. This means we calculate the bioenegetics for each individual well. Be aware that due to outlier removal of measurements, some bioenergetics can't be calculated for all wells.
+
+<br>
+<br>
+<br>
+
+### Bioenergetics Log OCR
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
+# log scale Bioenergetics
+# Prepare data frames with well, replicate and sample averages
+
+l.bio.well <- melt_bioenergetics_well(log.be.well)
+l.bio.replicate <- melt_bioenergetics_replicate(log.be.replicate)
+l.bio.sample <- melt_bioenergetics_sample(log.be.sample)
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
+plot <- plot1(l.bio.well,l.bio.replicate, l.bio.sample) + 
+  ggtitle("Plot type 1B: Ratio based log scale Bio-Energetics OCR (folds)")+
+  ylab(expression("Mean OCR value [log10(pmol O"[2]*" /1000 cells)]"))
+plot
+
+```
+
+
+**Figure description:** <br> 
+Small symbols: Bioenergetics calculated for each well. <br> 
+Large dots: Indicate the mean of each replicate. <br>
+Errorbars and mean (black): Sample mean + errorbars indicating `r error_measure`. <br>
+**Which data is used:** <br> 
+Small symbols: All measurements are grouped by well, sample id (group name + date) and interval. This means we calculate the LOCR estimates and bioenergetics for each individual well. Be aware that due to outlier removal of measurements, some bioenergetics can't be calculated for all wells. <br>
+Large dots: All measurements are grouped by each interval and sample id (group name + date). This means that we pool all wells for each replicate, calculate the average LOCR values for each interval and calculate the bioenergetics. <br>
+Errorbars and mean: All measurements are pooled for each sample/plate across all replicates and the average OCR values are calculated for each interval, before the bioenergetics are calculated.
+
+<br>
+<br>
+<br>
+<br>
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
+
+plot <- plot2(l.bio.replicate, l.bio.sample)+
+  ggtitle("Plot type 2B: Ratio based log scale Bio-Energetics OCR (folds)")+
+  ylab(expression("Mean OCR value [log10(pmol O"[2]*" /1000 cells)]"))
+plot
+```
+
+**Figure description:** <br> The plot shows the average bioenergetics estimates for the replicates and the entire samples. Colors indicate the individual samples (identified by sample name), and the shape indicate the time of analysis i.e. replicates. <br>
+**How the averages are calculated:** <br> 
+All measurements for each replicate is pooled, the average LOCR estimates are calculated for each interval and from that the bioenergetics are calculated.
+
+<br>
+<br>
+<br>
+<br>
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
+plot <- plot3(l.bio.well) +
+  ggtitle("Plot type 3B: Ratio based log scale Bio-Energetics OCR (folds)")+
+  ylab(expression("Mean OCR value [log10(pmol O"[2]*" /1000 cells)]"))
+plot
+```
+
+**Figure description:** <br> 
+Shows the bioenergetic estimates for each well. <br>
+**Which data is used:** <br> 
+All measurements are grouped by well, sample id (group name + date) and interval. This means we calculate the bioenegetics for each individual well. Be aware that due to outlier removal of measurements, some bioenergetics can't be calculated for all wells.
+
+<br>
+<br>
+<br>
+<br>
+
+```{r echo=FALSE}
+# write difference based bioenergetics
+write_xlsx(n.bio.well, paste0(OUTPUT_PATH,"/BioEnergetics-OCR-well.xlsx"))
+write_xlsx(n.bio.replicate, paste0(OUTPUT_PATH,"/BioEnergetics-OCR-replicate.xlsx"))
+write_xlsx(n.bio.sample, paste0(OUTPUT_PATH,"/BioEnergetics-OCR-sample.xlsx"))
+
+# write ratio based bienergetics
+write_xlsx(l.bio.well, paste0(OUTPUT_PATH,"/BioEnergetics-LOCR-well.xlsx"))
+write_xlsx(l.bio.replicate, paste0(OUTPUT_PATH,"/BioEnergetics-LOCR-replicate.xlsx"))
+write_xlsx(l.bio.sample, paste0(OUTPUT_PATH,"/BioEnergetics-LOCR-sample.xlsx"))
+
+
+```
+
+```{r echo=FALSE}
+# Print interval estimates
+l.bio.replicate[1:4,] %>%
+  kable(digits = 3, caption = "Example of Bioenergetics file ") %>%
+  kable_styling(full_width = F)
+```
+
+<br>
+<br>
+<br>
+<br>
+
+# PER
+## Filter out irrelevant samples
+
+```{r echo=FALSE, message = FALSE}
+# Interval 3 and 4 is not used
+d_PER <- dm %>% filter(!Interval %in% c("Int3", "Int4"))
+
+# filter out samples with any of intervals having less than 8 measurements
+sumar <- d_PER %>%
+  group_by(sample_id, Interval) %>%
+  summarise(n = n()) %>%
+  filter(n < 18)
+
+# number of intervals has to be 2 or discarted
+inter <- d_PER %>%
+  group_by(sample_id) %>%
+  summarise(n_inter = length(unique(Interval))) %>%
+  filter(n_inter != 2)
+
+d_PER <- d_PER %>%
+  filter(! sample_id %in% unique(sumar$sample_id)) %>%
+  filter(! sample_id %in% unique(inter$sample_id))
+
+cat("Wells removed due lack of usable measurements (Less than six usable wells in any interval): ", paste(unique(sumar$sample_id), collapse = "\n"), sep = "\n")
+cat("Wells removed because there are not four intervals: ", paste(unique(inter$sample_id), collapse = "\n"), sep = "\n")
+```
+
+## Identify and remove outliers
+```{r echo=FALSE, echo=FALSE}
+# Identify Outliars
+# DT = loaded dataframe
+# cut.well = threshold for well outliaer,
+# cut.point = threshold for point outliaer
+# x = Variable: "LOCR" or "OCR" or "PER"
+
+dr_per <- idfy_sinleP_outlier(DT = d_PER, cut.point = 5, x = "PER" )  # could Print arguments
+# write the data into file
+write_xlsx(dr_per, paste0(OUTPUT_PATH,"/.Data_removed_PER.xlsx"))
+```
+
+```{r echo=FALSE, warning=FALSE, echo=FALSE}
+#TO DO: convert graph to aditive add legends
+#TO DO: convert graph to aditive add legends
+dr_per %>%
+  group_by(sample_id, is.out.p) %>%
+  summarise(n = n()) %>%
+  group_by(sample_id) %>%
+  mutate(size = sum(n),
+         ptg = n / size *100,
+         percentage = paste(format(ptg, digits= 1, nsmall=2),"%")) %>%
+  filter(is.out.p == T) %>%
+  arrange(desc(ptg)) %>%
+  select(sample_id, percentage) %>%
+  kable(caption="Amount of removed outliers across samples") %>%
+  kable_styling(full_width = F)
+
+```
+
+<br>
+
+### Print schemes of removed points for all samples
+```{r echo=FALSE}
+ylim_low <- min(dr_per$PER) #write - x where x is a number to adjust the starting point of the y axis
+ylim_high <- max(dr_per$PER)
+for (smpl in unique(dr_per$sample_id)) {
+  plot <- ggplot(filter(dr_per, sample_id == smpl), aes(Measurement, PER))+
+            ggtitle(paste0("SAMPLE:  ", smpl))+
+            geom_line(aes(group = Well),size = 0.2, color = "grey") +
+            geom_point(aes(Measurement, PER, color = is.out.p))+
+            guides(color=guide_legend(title="Outlier"))+
+            xlab("Measurement")+
+            ylim(ylim_low,ylim_high)+
+            ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))+
+            NULL
+
+  print(plot +theme_bw())
+}
+```
+
+<br>
+<br>
+<br>
+
+```{r echo=FALSE}
+# Both estimates and bioenergetics are calculated here
+norm.be.PER.well <- compute_bioenergetics_well(dr_per, "PER")
+log.be.PER.well <- compute_bioenergetics_well(dr_per, "LPER")
+norm.be.PER.replicate <- compute_bioenergetics_replicate(dr_per, "PER")
+log.be.PER.replicate  <- compute_bioenergetics_replicate(dr_per, "LPER")
+norm.be.PER.sample <- compute_bioenergetics_sample(dr_per, "PER")
+log.be.PER.sample <- compute_bioenergetics_sample(dr_per, "LPER")
+
+
+write_xlsx(norm.be.PER.well$estimates, paste0(OUTPUT_PATH,"/Estimated_values-PER-well.xlsx"))
+write_xlsx(log.be.PER.well$estimates, paste0(OUTPUT_PATH,"/Estimates_values-LPER-well.xlsx"))
+write_xlsx(norm.be.PER.replicate$estimates, paste0(OUTPUT_PATH,"/Estimated_values-PER-replicates.xlsx"))
+write_xlsx(log.be.PER.replicate$estimates, paste0(OUTPUT_PATH,"/Estimates_values-LPER-replicates.xlsx"))
+write_xlsx(norm.be.PER.sample$estimates, paste0(OUTPUT_PATH,"/Estimated_values-PER-samples.xlsx"))
+write_xlsx(log.be.PER.sample$estimates, paste0(OUTPUT_PATH,"/Estimates_values-LPER-samples.xlsx"))
+```
+
+## Summary statistics for each sample
+```{r echo = FALSE}
+summary_plot_function(norm.be.PER.sample)+
+    ggtitle("PER estimates sample summary (Outliers removed)")+
+    ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))
+
+
+
+summary_plot_function(log.be.PER.sample)+
+    ggtitle("LPER estimates sample summary (Outliers removed)")+
+    ylab(expression("Mean LPER value [log(pmol H"["+"]*" /1000 cells)]"))
+
+```
+
+<br>
+<br>
+<br>
+
+## Bioenergetics and Estimates
+
+
+```{r, echo = FALSE, fig.width = 8}
+summary_plot_function2(norm.be.PER.well, norm.be.PER.replicate, norm.be.PER.sample)+
+    ggtitle("PER estimates shown by well, replicate and sample")+
+    ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))
+
+
+summary_plot_function2(norm.be.PER.well, norm.be.PER.replicate, norm.be.PER.sample)+
+    ggtitle("LPER estimates shown by well, replicate and sample")+
+    ylab(expression("Mean LPER value [log10(pmol H"["+"]*" /1000 cells)]"))
+```
+
+**Figure description:** <br>
+Colors indicate replicates, large points represent the group mean of wells, the bold black line is the sample mean of wells, and the errorbars shows the `r params$error_measure` of the well means for each group.
+
+<br>
+<br>
+<br>
+
+### Bioenergetics PER
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
+# normal scale Bioenergetics
+# Prepare data frames with well, replicate and sample averages
+
+n.bio.PER.well <- melt_bioenergetics_well(norm.be.PER.well)
+n.bio.PER.replicate <- melt_bioenergetics_replicate(norm.be.PER.replicate)
+n.bio.PER.sample <- melt_bioenergetics_sample(norm.be.PER.sample)
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
+plot <- plot1(n.bio.PER.well,n.bio.PER.replicate, n.bio.PER.sample) + 
+  ggtitle("Plot type 1A: Difference based natural scale Bio-Energetics PER")+
+  ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))
+plot
+```
+
+
+**Figure description:** <br> 
+Small symbols: Bioenergetics calculated for each well. <br> 
+Large dots: Indicate the mean of each replicate. <br>
+Errorbars and mean (black): Sample mean + errorbars indicating `r error_measure`. <br>
+**Which data is used:** <br> 
+Small symbols: All measurements are grouped by well, sample id (group name + date) and interval. This means we calculate the PER estimates and bioenegetics for each individual well. Be aware that due to outlier removal of measurements, some bioenergetics can't be calculated for all wells. <br>
+Large dots: All measurements are grouped by each interval and sample id (group name + date). This means that we pool all wells for each replicate, calculate the average PER values for each interval and calculate the bioenergetics. <br>
+Errorbars and mean: All measurements are pooled for each sample/plate across all replicates and the average PER values are calculated for each interval, before the bioenergetics are calculated.
+
+<br>
+<br>
+<br>
+<br>
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
+plot <- plot2(n.bio.PER.replicate, n.bio.PER.sample)+
+  ggtitle("Plot type 2A: Difference based natural scale Bio-Energetics PER")+
+  ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))
+plot
+```
+
+**Figure description:** <br> The plot shows the average bioenergetics estimates for the replicates and the entire samples. Colors indicate the individual samples (identified by sample name), and the shape indicate the time of analysis i.e. replicates. <br>
+**How the averages are calculated:** <br> 
+All measurements for each replicate is pooled, the average PER estimates are calculated for each interval and from that the bioenergetics are calculated.
+
+<br>
+<br>
+<br>
+<br>
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
+plot <- plot3(n.bio.PER.well) +
+  ggtitle("Plot type 3A: Difference based natural scale Bio-Energetics PER")+
+  ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))
+plot
+```
+
+**Figure description:** <br> 
+Shows the bioenergetic estimates for each well. <br>
+**Which data is used:** <br> 
+All measurements are grouped by well, sample id (group name + date) and interval. This means we calculate the bioenegetics for each individual well. Be aware that due to outlier removal of measurements, some bioenergetics can't be calculated for all wells.
+
+<br>
+<br>
+<br>
+<br>
+
+### Bioenergetics Log PER
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
+# log scale Bioenergetics
+# Prepare data frames with well, replicate and sample averages
+
+l.bio.PER.well <- melt_bioenergetics_well(log.be.PER.well)
+l.bio.PER.replicate <- melt_bioenergetics_replicate(log.be.PER.replicate)
+l.bio.PER.sample <- melt_bioenergetics_sample(log.be.PER.sample)
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
+plot <- plot1(l.bio.PER.well,l.bio.PER.replicate, l.bio.PER.sample) + 
+  ggtitle("Plot type 1B: Ratio based log scale Bio-Energetics PER (folds)")+
+  ylab(expression("Mean Log(PER) value [log(pmol H"["+"]*" /1000 cells)]"))
+plot
+```
+
+
+**Figure description:** <br> 
+Small symbols: Bioenergetics calculated for each well. <br> 
+Large dots: Indicate the mean of each replicate. <br>
+Errorbars and mean (black): Sample mean + errorbars indicating `r error_measure`. <br>
+**Which data is used:** <br> 
+Small symbols: All measurements are grouped by well, sample id (group name + date) and interval. This means we calculate the LPER estimates and bioenergetics for each individual well. Be aware that due to outlier removal of measurements, some bioenergetics can't be calculated for all wells. <br>
+Large dots: All measurements are grouped by each interval and sample id (group name + date). This means that we pool all wells for each replicate, calculate the average LPER values for each interval and calculate the bioenergetics. <br>
+Errorbars and mean: All measurements are pooled for each sample/plate across all replicates and the average PER values are calculated for each interval, before the bioenergetics are calculated.
+
+<br>
+<br>
+<br>
+<br>
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
+plot <- plot2(l.bio.PER.replicate, l.bio.PER.sample)+
+  ggtitle("Plot type 2B: Ratio based log scale Bio-Energetics PER (folds)")+
+  ylab(expression("Mean Log(PER) value [log(pmol H"["+"]*" /1000 cells)]"))
+plot
+```
+
+**Figure description:** <br> The plot shows the average bioenergetics estimates for the replicates and the entire samples. Colors indicate the individual samples (identified by sample name), and the shape indicate the time of analysis i.e. replicates. <br>
+**How the averages are calculated:** <br> 
+All measurements for each replicate is pooled, the average LPER estimates are calculated for each interval and from that the bioenergetics are calculated.
+
+<br>
+<br>
+<br>
+<br>
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
+plot <- plot3(l.bio.PER.well) +
+  ggtitle("Plot type 3B: Ratio based log scale Bio-Energetics PER (folds)")+
+  ylab(expression("Mean Log(PER) value [log(pmol H"["+"]*" /1000 cells)]"))
+plot
+```
+
+**Figure description:** <br> 
+Shows the bioenergetic estimates for each well. <br>
+**Which data is used:** <br> 
+All measurements are grouped by well, sample id (group name + date) and interval. This means we calculate the bioenegetics for each individual well. Be aware that due to outlier removal of measurements, some bioenergetics can't be calculated for all wells.
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width = 8}
+write_xlsx(n.bio.PER.well, paste0(OUTPUT_PATH,"/BioEnergetics-PER-well.xlsx"))
+write_xlsx(n.bio.PER.replicate, paste0(OUTPUT_PATH,"/BioEnergetics-PER-replicate.xlsx"))
+write_xlsx(n.bio.PER.sample, paste0(OUTPUT_PATH,"/BioEnergetics-PER-sample.xlsx"))
+
+write_xlsx(l.bio.PER.well, paste0(OUTPUT_PATH,"/BioEnergetics-LPER-well.xlsx"))
+write_xlsx(l.bio.PER.replicate, paste0(OUTPUT_PATH,"/BioEnergetics-LPER-replicate.xlsx"))
+write_xlsx(l.bio.PER.sample, paste0(OUTPUT_PATH,"/BioEnergetics-LPER-sample.xlsx"))
+```
+
+<br>
+<br>
+<br>
+<br>
+
+# PER vs OCR
+
+### Basal OCR vs basal PER
+
+```{r echo=FALSE}
+# Get basal data for each well
+basal.OCR.well <- n.bio.well %>%
+  filter(variable %in% c("Basal.Resp"))
+basal.PER.well <- n.bio.PER.well %>%
+  filter(variable %in% c("Basal.PER"))
+total.min.well <- merge(x = basal.OCR.well, y = basal.PER.well,by = c("Sample", "Well"), suffixes = c(".OCR", ".PER"))
+total.min.well <- total.min.well %>% mutate(min_max = "Basal")
+
+# Get max data for each well
+max.PER.well <- n.bio.PER.well %>%
+  filter(variable %in% c("Max.PER"))
+max.OCR.well <- n.bio.well %>%
+  filter(variable %in% c("Maximal.Resp"))
+total.max.well <- merge(x = max.PER.well, y = max.OCR.well,by = c("Sample", "Well"), suffixes = c(".PER", ".OCR"))
+total.max.well <- total.max.well %>% mutate(min_max = "Maximum")
+
+# Merge to create min/max sample data
+total.well <- rbind(total.min.well, total.max.well)
+
+# Get basal data for each sample
+basal.OCR.sample <- n.bio.sample %>%
+  filter(variable %in% c("Basal.Resp"))
+basal.PER.sample <- n.bio.PER.sample %>%
+  filter(variable %in% c("Basal.PER"))
+total.min.sample <- merge(x = basal.OCR.sample, y = basal.PER.sample,by = c("Sample"), suffixes = c(".OCR", ".PER"))
+total.min.sample <- total.min.sample %>% mutate(min_max = "Basal")
+
+# Get max data for each sample
+max.PER.sample <- n.bio.PER.sample %>%
+  filter(variable %in% c("Max.PER"))
+max.OCR.sample <- n.bio.sample %>%
+  filter(variable %in% c("Maximal.Resp"))
+total.max.sample <- merge(x = max.PER.sample, y = max.OCR.sample,by = c("Sample"), suffixes = c(".PER", ".OCR"))
+total.max.sample <- total.max.sample %>% mutate(min_max = "Maximum")
+
+# Merge to create min/max sample data
+total.sample <- rbind(total.min.sample, total.max.sample)
+```
+
+
+```{r echo = FALSE, fig.height= 12}
+total.well %>% ggplot()+
+  ggtitle("PER versus OCR")+
+  geom_point(mapping = aes(y = mean.PER, x = mean.OCR, fill = Group.PER), shape = 21)+
+  facet_wrap(~min_max)+
+  geom_point(data = total.sample, aes(y = mean.PER, x = mean.OCR, fill = Sample), size = 4, shape = 21)+
+  geom_errorbar(data = total.sample, 
+                aes(y = mean.PER, x = mean.OCR, 
+                    ymin=mean.PER-eval(parse(text = paste(params$error_measure, ".PER", sep = ""))), 
+                    ymax=mean.PER+eval(parse(text = paste(params$error_measure, ".PER", sep = "")))),
+                    color = "black", width=0.1, size = 0.8)+
+    geom_errorbar(data = total.sample, 
+                  aes(y = mean.PER, x = mean.OCR, 
+                      xmin=mean.OCR-eval(parse(text = paste(params$error_measure, ".OCR", sep = ""))), 
+                      xmax=mean.OCR+eval(parse(text = paste(params$error_measure, ".OCR", sep = "")))),
+                      color = "black", width=0.1, size = 0.8)+
+  scale_color_brewer(palette = "Dark2")+
+  scale_fill_brewer(palette = "Dark2")+
+  xlab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))+
+  ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))+
+  theme_bw()+
+  coord_equal(ratio = 1)+
+  labs(fill = "Sample")+
+    NULL
+```
