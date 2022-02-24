@@ -27,7 +27,7 @@ Step 4: Run the code chunk below <br>
 ```{r eval = FALSE, include=FALSE}
 # Set path and load the package "here"
 
-here::i_am("Experiments/OCR+PER-Pipeline.Rmd")
+here::i_am("Experiments/OCR+PER-Pipeline-FOUR-INTERVALS.Rmd")
 
 if(!("here" %in% installed.packages()[, "Package"])) {
   install.packages("here")

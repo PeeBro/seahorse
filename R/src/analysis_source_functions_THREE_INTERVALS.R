@@ -326,7 +326,7 @@ read_xlsx_set <- function(path_, pattern_){
     intervals <- read_xlsx(x,
                            sheet = "Assay Configuration", 
                            range = "C47:F47", col_names = c("1","2","3","4"))
-    
+    intervals <- intervals %>% select_if(!is.na(.)) # Remove NA values
     
     length_intervals <- as.integer(sub(".*: ", "", intervals))
     acc_length_intervals <- as.data.frame(cumsum(length_intervals))
@@ -361,7 +361,7 @@ read_xlsx_set <- function(path_, pattern_){
       ungroup() %>% 
       group_by(Well) %>%
       summarise(average_mmHg = mean(`O2 (mmHg)`), # Calculates average Hg of the measurements (first tick of each) in interval 1 for each well
-                out          = ifelse(average_mmHg > 160 | average_mmHg < 140, T, F )) %>%
+                out          = ifelse(average_mmHg > 160 | average_mmHg < 133, T, F )) %>%
       filter(out == T)
     
     # remove Unassigned wells

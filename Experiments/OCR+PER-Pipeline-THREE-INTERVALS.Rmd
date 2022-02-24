@@ -1,10 +1,10 @@
 ---
-title: "OCR+PER-Pipeline-FOUR-INTERVALS"
+title: "OCR+PER-Pipeline-THREE-INTERVALS"
 output: 
   html_document:
     number_sections: true
 params:
-  input_folder: "GtF_2021-2_FAKE"
+  input_folder: "3 intervals2_test"
   error_measure: "se"
 editor_options: 
   chunk_output_type: console
@@ -27,7 +27,7 @@ Step 4: Run the code chunk below <br>
 ```{r eval = FALSE, include=FALSE}
 # Set path and load the package "here"
 
-here::i_am("Experiments/OCR+PER-Pipeline.Rmd")
+here::i_am("Experiments/OCR+PER-Pipeline-THREE-INTERVALS.Rmd")
 
 if(!("here" %in% installed.packages()[, "Package"])) {
   install.packages("here")
@@ -69,7 +69,7 @@ if(!dir.exists(o_path)){
 
 
 # source the functions used in analysis
-source(here("R", "src", "analysis_source_functions_FOUR_INTERVALS.R"))
+source(here("R", "src", "analysis_source_functions_THREE_INTERVALS.R"))
 
 # INPUT_PATH  <- (here('/Data/INPUT/ConBIS')) # path to the folder of interest
 INPUT_PATH  <- (here('Data', "INPUT", input_folder)) # path to the folder of interest
@@ -80,9 +80,8 @@ OUTPUT_PATH <- (here('Data', "OUTPUT", output_folder))
 # Delete old knit files
 name_of_cache <- list.files(path = "./Experiments", pattern = "cache", include.dirs = TRUE) # Finds the correct folder by it self. Deletes ALL cache folders.
 knit_cache <- here('Experiments', name_of_cache)
-knit_files <- here("Data", "OUTPUT", output_folder, "OCR+PER-Pipeline_files")
-knit_figures <- here("Data", "OUTPUT", output_folder, "OCR+PER-Pipeline-FOUR-INTERVALS_files")
-knit_folders <- c(knit_cache, knit_files, knit_figures)
+knit_figures <- here("Data", "OUTPUT", output_folder, "OCR+PER-Pipeline-THREE-INTERVALS_files")
+knit_folders <- c(knit_cache, knit_figures)
 for (folder in knit_folders) {
   if (file.exists(folder))
   unlink(folder, recursive = T)
@@ -90,7 +89,7 @@ for (folder in knit_folders) {
 
 
 # Initialize the knitting process
-rmarkdown::render(here('Experiments', "OCR+PER-Pipeline-FOUR-INTERVALS.Rmd"), output_dir = OUTPUT_PATH)
+rmarkdown::render(here('Experiments', "OCR+PER-Pipeline-THREE-INTERVALS.Rmd"), output_dir = OUTPUT_PATH)
 ```
 
 <br>
@@ -101,7 +100,9 @@ Steps performed: <br>
 - Load data
 
 ```{r, message=TRUE, warning=FALSE, echo=FALSE, paged.print=FALSE}
-# Read The the separate xlsx files from folder, Specify entire path to folder. 
+
+# Read The the separate xlsx files from folder, Specify entire path to folder.
+source(here("R", "src", "analysis_source_functions_THREE_INTERVALS.R"))
 data <- read_xlsx_set(INPUT_PATH, ".xlsx")  
 dm <- data$rates
 
