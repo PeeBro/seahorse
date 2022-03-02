@@ -315,12 +315,14 @@ norm.be.replicate$estimates[1:4,] %>%
 ```{r, echo = FALSE,  fig.width = 8}
 summary_plot_function2(norm.be.well, norm.be.replicate, norm.be.sample)+
     ggtitle("OCR estimates shown by well, replicate and sample")+
-    ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))
+    ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))+
+    theme(axis.text.x=element_text(angle = -90, hjust = 0))
 
 
 summary_plot_function2(norm.be.well, norm.be.replicate, norm.be.sample)+
     ggtitle("LOCR estimates shown by well, replicate and sample")+
-    ylab(expression("Mean LOCR value [log10(pmol O"[2]*" /1000 cells)]"))
+    ylab(expression("Mean LOCR value [log10(pmol O"[2]*" /1000 cells)]"))+
+    theme(axis.text.x=element_text(angle = -90, hjust = 0))
   
 ```
 
@@ -619,12 +621,14 @@ summary_plot_function(log.be.PER.sample)+
 ```{r, echo = FALSE, fig.width = 8}
 summary_plot_function2(norm.be.PER.well, norm.be.PER.replicate, norm.be.PER.sample)+
     ggtitle("PER estimates shown by well, replicate and sample")+
-    ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))
+    ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))+
+    theme(axis.text.x=element_text(angle = -90, hjust = 0))
 
 
 summary_plot_function2(norm.be.PER.well, norm.be.PER.replicate, norm.be.PER.sample)+
     ggtitle("LPER estimates shown by well, replicate and sample")+
-    ylab(expression("Mean LPER value [log10(pmol H"["+"]*" /1000 cells)]"))
+    ylab(expression("Mean LPER value [log10(pmol H"["+"]*" /1000 cells)]"))+
+    theme(axis.text.x=element_text(angle = -90, hjust = 0))
 ```
 
 **Figure description:** <br>

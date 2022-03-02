@@ -368,6 +368,7 @@ Errorbars and mean: All measurements are pooled for each sample/plate across all
 <br>
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
+source(here("R", "src", "analysis_source_functions_THREE_INTERVALS.R"))
 plot <- plot2(n.bio.replicate, n.bio.sample)+
   ggtitle("Plot type 2A: Difference based natural scale Bio-Energetics OCR")+
   ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))

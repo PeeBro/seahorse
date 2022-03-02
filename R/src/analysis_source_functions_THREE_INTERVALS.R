@@ -111,7 +111,7 @@ plot1 <- function(well, replicate, sample){
                position = position_dodge(width = 0.8))+
     geom_errorbar(data = sample, aes(ymin=mean-eval(parse(text = error_measure)), ymax=mean+eval(parse(text = error_measure)), group = Sample_identifier), width=0.5, size = 0.8,
                   position=position_dodge(0.8))+
-    scale_shape_manual(values= c(15,8, 17,3))+
+    scale_shape_manual(values= c(15,8, 17,3,15,8, 17,3))+
     scale_color_brewer(palette = "Dark2")+
     scale_fill_brewer(palette = "Dark2")+
     facet_wrap(~variable)+
@@ -132,7 +132,7 @@ plot2 <- function(replicate, sample) {
                position = position_dodge(width = 0.6))+
     geom_errorbar(data = sample, aes(ymin=mean-eval(parse(text = error_measure)), ymax=mean+eval(parse(text = error_measure)), group = Sample_identifier), width=0.5, size = 0.8,
                   position=position_dodge(0.6))+
-    scale_shape_manual(values= c(21,22))+
+    scale_shape_manual(values= c(21,22,23,24,25,21,22,23,24,25))+
     scale_color_brewer(palette = "Dark2")+
     scale_fill_brewer(palette = "Dark2")+
     guides(fill=guide_legend(override.aes=list(shape=21)))+
