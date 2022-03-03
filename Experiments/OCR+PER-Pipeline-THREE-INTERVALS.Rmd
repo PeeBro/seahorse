@@ -265,6 +265,7 @@ Estimates are taken by mean of measurements from each interval in sample. Estima
 If you want to see or change how they are computed see the function compute_bioenergetics_ ()in file analysis_source_functions.R
 
 ```{r echo=FALSE}
+source(here("R", "src", "analysis_source_functions_THREE_INTERVALS.R"))
 # The compute bionergetics functions does also calculate the estimates. Both are calculated here
 norm.be.well <- compute_bioenergetics_well(dr_ocr, "OCR")
 log.be.well <- compute_bioenergetics_well(dr_ocr, "LOCR")
@@ -272,6 +273,7 @@ norm.be.replicate <- compute_bioenergetics_replicate(dr_ocr, "OCR")
 log.be.replicate  <- compute_bioenergetics_replicate(dr_ocr, "LOCR")
 norm.be.sample <- compute_bioenergetics_sample(dr_ocr, "OCR")
 log.be.sample <- compute_bioenergetics_sample(dr_ocr, "LOCR")
+
 
 write_xlsx(norm.be.well$estimates, paste0(OUTPUT_PATH,"/Estimated_values-OCR-well.xlsx"))
 write_xlsx(log.be.well$estimates, paste0(OUTPUT_PATH,"/Estimates_values-LOCR-well.xlsx"))
@@ -314,12 +316,14 @@ norm.be.replicate$estimates[1:4,] %>%
 ```{r, echo = FALSE,  fig.width = 8}
 summary_plot_function2(norm.be.well, norm.be.replicate, norm.be.sample)+
     ggtitle("OCR estimates shown by well, replicate and sample")+
-    ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))
+    ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))+
+    theme(axis.text.x=element_text(angle = -90, hjust = 0))
 
 
 summary_plot_function2(norm.be.well, norm.be.replicate, norm.be.sample)+
     ggtitle("LOCR estimates shown by well, replicate and sample")+
-    ylab(expression("Mean LOCR value [log10(pmol O"[2]*" /1000 cells)]"))
+    ylab(expression("Mean LOCR value [log10(pmol O"[2]*" /1000 cells)]"))+
+    theme(axis.text.x=element_text(angle = -90, hjust = 0))
   
 ```
 
@@ -368,7 +372,6 @@ Errorbars and mean: All measurements are pooled for each sample/plate across all
 <br>
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
-source(here("R", "src", "analysis_source_functions_THREE_INTERVALS.R"))
 plot <- plot2(n.bio.replicate, n.bio.sample)+
   ggtitle("Plot type 2A: Difference based natural scale Bio-Energetics OCR")+
   ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))
@@ -593,6 +596,9 @@ write_xlsx(norm.be.PER.replicate$estimates, paste0(OUTPUT_PATH,"/Estimated_value
 write_xlsx(log.be.PER.replicate$estimates, paste0(OUTPUT_PATH,"/Estimates_values-LPER-replicates.xlsx"))
 write_xlsx(norm.be.PER.sample$estimates, paste0(OUTPUT_PATH,"/Estimated_values-PER-samples.xlsx"))
 write_xlsx(log.be.PER.sample$estimates, paste0(OUTPUT_PATH,"/Estimates_values-LPER-samples.xlsx"))
+
+
+
 ```
 
 ## Summary statistics for each sample
@@ -619,12 +625,14 @@ summary_plot_function(log.be.PER.sample)+
 ```{r, echo = FALSE, fig.width = 8}
 summary_plot_function2(norm.be.PER.well, norm.be.PER.replicate, norm.be.PER.sample)+
     ggtitle("PER estimates shown by well, replicate and sample")+
-    ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))
+    ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))+
+    theme(axis.text.x=element_text(angle = -90, hjust = 0))
 
 
 summary_plot_function2(norm.be.PER.well, norm.be.PER.replicate, norm.be.PER.sample)+
     ggtitle("LPER estimates shown by well, replicate and sample")+
-    ylab(expression("Mean LPER value [log10(pmol H"["+"]*" /1000 cells)]"))
+    ylab(expression("Mean LPER value [log10(pmol H"["+"]*" /1000 cells)]"))+
+    theme(axis.text.x=element_text(angle = -90, hjust = 0))
 ```
 
 **Figure description:** <br>
@@ -848,3 +856,40 @@ total.well %>% ggplot()+
   labs(fill = "Sample_identifier")+
     NULL
 ```
+
+```{r echo = FALSE}
+ATPplot.well <- n.bio.well %>% filter(variable %in% c("glycoATP.prod.rate","mitoATP.prod.rate"))
+ATPplot.well <- ATPplot.well %>% pivot_wider(names_from = variable, values_from = c(mean,se,sd))
+ATPplot.well <- ATPplot.well%>% separate(Sample, into = c("Sample_identifier", "Replicate_identifier"), sep = "#")
+ATPplot.sample <- n.bio.sample %>% filter(variable %in% c("glycoATP.prod.rate","mitoATP.prod.rate"))
+ATPplot.sample <- ATPplot.sample %>% pivot_wider(names_from = variable, values_from = c(mean,se,sd))
+
+```
+
+
+# ATP production rate
+```{r echo = FALSE}
+ATPplot.well %>% ggplot()+
+  ggtitle("Energetic map (Basal Rates)")+
+  geom_point(mapping = aes(y = mean_glycoATP.prod.rate, x = mean_mitoATP.prod.rate, fill = Sample_identifier), shape = 21)+
+  geom_point(data = ATPplot.sample, aes(y = mean_glycoATP.prod.rate, x = mean_mitoATP.prod.rate, fill = Sample_identifier), size = 4, shape = 21)+
+  geom_errorbar(data = ATPplot.sample, 
+                aes(y = mean_glycoATP.prod.rate, x = mean_mitoATP.prod.rate, 
+                    ymin=mean_glycoATP.prod.rate-eval(parse(text = paste(params$error_measure, "_glycoATP.prod.rate", sep = ""))), 
+                    ymax=mean_glycoATP.prod.rate+eval(parse(text = paste(params$error_measure, "_glycoATP.prod.rate", sep = "")))),
+                    color = "black", width=0.1, size = 0.8)+
+    geom_errorbar(data = ATPplot.sample, 
+                  aes(y = mean_glycoATP.prod.rate, x = mean_mitoATP.prod.rate, 
+                      xmin=mean_mitoATP.prod.rate-eval(parse(text = paste(params$error_measure, "_mitoATP.prod.rate", sep = ""))), 
+                      xmax=mean_mitoATP.prod.rate+eval(parse(text = paste(params$error_measure, "_mitoATP.prod.rate", sep = "")))),
+                      color = "black", width=0.1, size = 0.8)+
+  scale_color_brewer(palette = "Dark2")+
+  scale_fill_brewer(palette = "Dark2")+
+  xlab(expression("Glyco ATP Production Rate [pmol O"[2]*" /1000 cells]"))+
+  ylab(expression("Mito ATP Production Rate [pmol H"["+"]*" /1000 cells]"))+
+  theme_bw()+
+  coord_equal(ratio = 1)+
+  # labs(fill = "Sample")+
+    NULL
+```
+

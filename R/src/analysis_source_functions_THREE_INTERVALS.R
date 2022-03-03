@@ -96,8 +96,9 @@ summary_plot_function2 <- function(df_well, df_rep, df_sample) {
 
 plot1 <- function(well, replicate, sample){
   
-  well <- well%>% separate(Sample, into = c("Sample_identifier", "Replicate_identifier"), sep = "#")
-  replicate <- replicate %>% separate(Sample, into = c("Sample_identifier", "Replicate_identifier"), sep = "#")
+  well <- well%>% separate(Sample, into = c("Sample_identifier", "Replicate_identifier"), sep = "#") %>% filter(!variable %in% c("glycoATP.prod.rate","mitoATP.prod.rate","log.glycoATP.prod.rate","log.mitoATP.prod.rate"))
+  replicate <- replicate %>% separate(Sample, into = c("Sample_identifier", "Replicate_identifier"), sep = "#") %>% filter(!variable %in% c("glycoATP.prod.rate","mitoATP.prod.rate","log.glycoATP.prod.rate","log.mitoATP.prod.rate"))
+  sample <- sample  %>% filter(!variable %in% c("glycoATP.prod.rate","mitoATP.prod.rate","log.glycoATP.prod.rate","log.mitoATP.prod.rate"))
   
   well %>%
     filter(variable != "Other") %>%
@@ -122,7 +123,8 @@ plot1 <- function(well, replicate, sample){
 
 plot2 <- function(replicate, sample) {
   
-  replicate <- replicate %>% separate(Sample, into = c("Sample_identifier", "Replicate_identifier"), sep = "#")  
+  replicate <- replicate %>% separate(Sample, into = c("Sample_identifier", "Replicate_identifier"), sep = "#") %>% filter(!variable %in% c("glycoATP.prod.rate","mitoATP.prod.rate","log.glycoATP.prod.rate","log.mitoATP.prod.rate"))
+  sample <- sample %>% filter(!variable %in% c("glycoATP.prod.rate","mitoATP.prod.rate","log.glycoATP.prod.rate","log.mitoATP.prod.rate"))
   
   replicate %>%
     filter(variable != "Other") %>%
@@ -141,7 +143,7 @@ plot2 <- function(replicate, sample) {
 }
 
 plot3 <- function(well) {
-  well <- well%>% separate(Sample, into = c("Sample_identifier", "Replicate_identifier"), sep = "#")
+  well <- well%>% separate(Sample, into = c("Sample_identifier", "Replicate_identifier"), sep = "#") %>% filter(!variable %in% c("glycoATP.prod.rate","mitoATP.prod.rate","log.glycoATP.prod.rate","log.mitoATP.prod.rate"))
   well %>%
     filter(variable != "Other") %>%
     ggplot(aes(x = variable, y = mean))+
@@ -652,6 +654,20 @@ compute_bioenergetics_replicate <- function(dm_r, method) {
   numbers    <- as.data.frame(cast(estim_mean, sample_id~Interval, value = "size"))
   CVs        <- as.data.frame(cast(estim_mean, sample_id~Interval, value = "CV"))
   
+  # This is used in the ATP calculations. 
+  estim_mean_PER1 <- dr %>%
+    group_by(sample_id, Interval) %>%
+    summarise(mean = mean(PER), SD = sd(PER), SE = sd(PER)/sqrt(n()), size = n(), CV = (SD/mean)*100 )
+  
+  estim_mean_PER1 <- estim_mean_PER1 %>% mutate(Interval = replace(Interval, Interval == "Int1", "Int1.PER")) %>% 
+    filter(Interval %in% c("Int1.PER"))
+  estimates_PER1  <- as.data.frame(cast(estim_mean_PER1, sample_id~Interval, value = "mean"))
+  deviations_PER1 <- as.data.frame(cast(estim_mean_PER1, sample_id~Interval, value = "SD"))
+  
+  estimates <- merge(estimates, estimates_PER1, all.x = TRUE)
+  deviations <- merge(deviations, deviations_PER1, all.x = TRUE)
+  
+  
   # compute Bioenergetics according to the method used
   
   if (method == "OCR") {
@@ -661,7 +677,9 @@ compute_bioenergetics_replicate <- function(dm_r, method) {
              Basal.Resp       = Int1 - Int4,
              ATP.linked.Resp  = Int1 - Int2,
              Proton.Leak      = Int2 - Int4,
-             Non.Mito.Resp    = Int4) %>%
+             Non.Mito.Resp    = Int4, 
+             mitoATP.prod.rate = (Int1 - Int2)*2*2.75,
+             glycoATP.prod.rate = Int1.PER-((Int1-Int4)*0.61)) %>%
       select(-c("Int1", "Int2", "Int4", "sample_id"))
     # standard errors of mean differences
     sd_n   <- cbind(sd = deviations, n = numbers)
@@ -670,16 +688,20 @@ compute_bioenergetics_replicate <- function(dm_r, method) {
              Basal.Resp       = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)),
              ATP.linked.Resp  = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
              Proton.Leak      = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
-             Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
-      select(c("Sample", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Non.Mito.Resp"))
+             Non.Mito.Resp    = sd.Int4/sqrt(n.Int4),
+             mitoATP.prod.rate = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
+             glycoATP.prod.rate = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)+((sd.Int1.PER^2)/n.Int1))) %>%
+      select(c("Sample", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Non.Mito.Resp", "mitoATP.prod.rate", "glycoATP.prod.rate"))
     
     sd_errors <- sd_n %>% 
       mutate(Sample           = sd.sample_id,
              Basal.Resp       = sqrt((sd.Int1^2)+(sd.Int4^2)),
              ATP.linked.Resp  = sqrt((sd.Int1^2)+(sd.Int2^2)),
              Proton.Leak      = sqrt((sd.Int2^2)+(sd.Int4^2)),
-             Non.Mito.Resp    = sd.Int4) %>%
-      select(c("Sample", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Non.Mito.Resp"))
+             Non.Mito.Resp    = sd.Int4,
+             mitoATP.prod.rate = sqrt((sd.Int1^2)+(sd.Int2^2)),
+             glycoATP.prod.rate = sqrt((sd.Int1^2)+(sd.Int4^2)+(sd.Int1.PER^2))) %>%
+      select(c("Sample", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Non.Mito.Resp", "mitoATP.prod.rate", "glycoATP.prod.rate"))
     
   } else if (method == "LOCR") {
     # Ratio based bioenergetics
@@ -688,7 +710,9 @@ compute_bioenergetics_replicate <- function(dm_r, method) {
              log.Basal.Resp       = Int1 - Int4,
              log.ATP.linked.Resp  = Int1 - Int2,
              log.Proton.Leak      = Int2 - Int4,
-             log.Non.Mito.Resp    = Int4) %>%
+             log.Non.Mito.Resp    = Int4, 
+             log.mitoATP.prod.rate = (Int1 - Int2)*2*2.75,
+             log.glycoATP.prod.rate = Int1.PER-((Int1-Int4)*0.61)) %>%
       select(-c("Int1", "Int2", "Int4", "sample_id"))
     # standard errors of mean differences
     sd_n   <- cbind(sd = deviations, n = numbers)
@@ -697,16 +721,20 @@ compute_bioenergetics_replicate <- function(dm_r, method) {
              log.Basal.Resp       = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)),
              log.ATP.linked.Resp  = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
              log.Proton.Leak      = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
-             log.Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
-      select(c("Sample", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Non.Mito.Resp"))
+             log.Non.Mito.Resp    = sd.Int4/sqrt(n.Int4),
+             log.mitoATP.prod.rate = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
+             log.glycoATP.prod.rate = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)+((sd.Int1.PER^2)/n.Int1))) %>%
+      select(c("Sample", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Non.Mito.Resp", "log.mitoATP.prod.rate", "log.glycoATP.prod.rate"))
     
     sd_errors <- sd_n %>% 
       mutate(Sample           = sd.sample_id,
              log.Basal.Resp       = sqrt((sd.Int1^2)+(sd.Int4^2)),
              log.ATP.linked.Resp  = sqrt((sd.Int1^2)+(sd.Int2^2)),
              log.Proton.Leak      = sqrt((sd.Int2^2)+(sd.Int4^2)),
-             log.Non.Mito.Resp    = sd.Int4) %>%
-      select(c("Sample", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Non.Mito.Resp"))
+             log.Non.Mito.Resp    = sd.Int4,
+             log.mitoATP.prod.rate = sqrt((sd.Int1^2)+(sd.Int2^2)),
+             log.glycoATP.prod.rate = sqrt((sd.Int1^2)+(sd.Int4^2)+(sd.Int1.PER^2))) %>%
+      select(c("Sample", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Non.Mito.Resp", "log.mitoATP.prod.rate", "log.glycoATP.prod.rate"))
     
     
   } else if (method == "PER") {
@@ -777,6 +805,20 @@ compute_bioenergetics_well <- function(dm_r, method) {
   numbers    <- as.data.frame(cast(estim_mean, sample_id + Well~Interval, value = "size"))
   CVs        <- as.data.frame(cast(estim_mean, sample_id + Well~Interval, value = "CV"))
   
+  
+  # This is used in the ATP calculations. 
+  estim_mean_PER1 <- dr %>%
+    group_by(sample_id, Interval, Well) %>%
+    summarise(mean = mean(PER), SD = sd(PER), SE = sd(PER)/sqrt(n()), size = n(), CV = (SD/mean)*100 )
+  
+  estim_mean_PER1 <- estim_mean_PER1 %>% mutate(Interval = replace(Interval, Interval == "Int1", "Int1.PER")) %>% 
+    filter(Interval %in% c("Int1.PER"))
+  estimates_PER1  <- as.data.frame(cast(estim_mean_PER1, sample_id + Well~Interval, value = "mean"))
+  deviations_PER1 <- as.data.frame(cast(estim_mean_PER1, sample_id + Well~Interval, value = "SD"))
+  
+  estimates <- merge(estimates, estimates_PER1, all.x = TRUE)
+  deviations <- merge(deviations, deviations_PER1, all.x = TRUE)
+  
   # compute Bioenergetics according to the method used
   
   if (method == "OCR") {
@@ -786,7 +828,9 @@ compute_bioenergetics_well <- function(dm_r, method) {
              Basal.Resp       = Int1 - Int4,
              ATP.linked.Resp  = Int1 - Int2,
              Proton.Leak      = Int2 - Int4,
-             Non.Mito.Resp    = Int4) %>%
+             Non.Mito.Resp    = Int4,
+             mitoATP.prod.rate = (Int1 - Int2)*2*2.75,
+             glycoATP.prod.rate = Int1.PER-((Int1-Int4)*0.61)) %>%
       select(-c("Int1", "Int2", "Int4", "sample_id"))
     # standard errors of mean differences
     sd_n   <- cbind(sd = deviations, n = numbers)
@@ -795,8 +839,10 @@ compute_bioenergetics_well <- function(dm_r, method) {
              Basal.Resp       = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)),
              ATP.linked.Resp  = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
              Proton.Leak      = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
-             Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
-      select(c("Sample","n.Well", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Non.Mito.Resp"))
+             Non.Mito.Resp    = sd.Int4/sqrt(n.Int4),
+             mitoATP.prod.rate = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
+             glycoATP.prod.rate = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)+((sd.Int1.PER^2)/n.Int1))) %>%
+      select(c("Sample","n.Well", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Non.Mito.Resp", "mitoATP.prod.rate", "glycoATP.prod.rate"))
     colnames(st_errors)[2] <- "Well"
     
     
@@ -805,8 +851,10 @@ compute_bioenergetics_well <- function(dm_r, method) {
              Basal.Resp       = sqrt((sd.Int1^2)+(sd.Int4^2)),
              ATP.linked.Resp  = sqrt((sd.Int1^2)+(sd.Int2^2)),
              Proton.Leak      = sqrt((sd.Int2^2)+(sd.Int4^2)),
-             Non.Mito.Resp    = sd.Int4) %>%
-      select(c("Sample", "n.Well", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Non.Mito.Resp"))
+             Non.Mito.Resp    = sd.Int4,
+             mitoATP.prod.rate = sqrt((sd.Int1^2)+(sd.Int2^2)),
+             glycoATP.prod.rate = sqrt((sd.Int1^2)+(sd.Int4^2)+(sd.Int1.PER^2))) %>%
+      select(c("Sample", "n.Well", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Non.Mito.Resp", "mitoATP.prod.rate", "glycoATP.prod.rate"))
     colnames(st_errors)[2] <- "Well"
     
     
@@ -817,7 +865,9 @@ compute_bioenergetics_well <- function(dm_r, method) {
              log.Basal.Resp       = Int1 - Int4,
              log.ATP.linked.Resp  = Int1 - Int2,
              log.Proton.Leak      = Int2 - Int4,
-             log.Non.Mito.Resp    = Int4) %>%
+             log.Non.Mito.Resp    = Int4,
+             log.mitoATP.prod.rate = (Int1 - Int2)*2*2.75,
+             log.glycoATP.prod.rate = Int1.PER-((Int1-Int4)*0.61)) %>%
       select(-c("Int1", "Int2", "Int4", "sample_id"))
     # standard errors of mean differences
     sd_n   <- cbind(sd = deviations, n = numbers)
@@ -826,8 +876,10 @@ compute_bioenergetics_well <- function(dm_r, method) {
              log.Basal.Resp       = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)),
              log.ATP.linked.Resp  = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
              log.Proton.Leak      = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
-             log.Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
-      select(c("Sample", "n.Well", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Non.Mito.Resp"))
+             log.Non.Mito.Resp    = sd.Int4/sqrt(n.Int4),
+             log.mitoATP.prod.rate = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
+             log.glycoATP.prod.rate = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)+((sd.Int1.PER^2)/n.Int1))) %>%
+      select(c("Sample", "n.Well", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Non.Mito.Resp", "log.mitoATP.prod.rate", "log.glycoATP.prod.rate"))
     colnames(st_errors)[2] <- "Well"
     
     sd_errors <- sd_n %>% 
@@ -835,8 +887,10 @@ compute_bioenergetics_well <- function(dm_r, method) {
              log.Basal.Resp       = sqrt((sd.Int1^2)+(sd.Int4^2)),
              log.ATP.linked.Resp  = sqrt((sd.Int1^2)+(sd.Int2^2)),
              log.Proton.Leak      = sqrt((sd.Int2^2)+(sd.Int4^2)),
-             log.Non.Mito.Resp    = sd.Int4) %>%
-      select(c("Sample", "n.Well", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Non.Mito.Resp"))
+             log.Non.Mito.Resp    = sd.Int4,
+             log.mitoATP.prod.rate = sqrt((sd.Int1^2)+(sd.Int2^2)),
+             log.glycoATP.prod.rate = sqrt((sd.Int1^2)+(sd.Int4^2)+(sd.Int1.PER^2))) %>%
+      select(c("Sample", "n.Well", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Non.Mito.Resp", "log.mitoATP.prod.rate", "log.glycoATP.prod.rate"))
     colnames(st_errors)[2] <- "Well"
     
     
@@ -916,6 +970,19 @@ compute_bioenergetics_sample <- function(dm_r, method) {
   numbers    <- as.data.frame(cast(estim_mean, Sample_identifier~Interval, value = "size"))
   CVs        <- as.data.frame(cast(estim_mean, Sample_identifier~Interval, value = "CV"))
   
+  
+  # This is used in the ATP calculations. 
+  estim_mean_PER1 <- dr %>%
+    group_by(Sample_identifier, Interval) %>%
+    summarise(mean = mean(PER), SD = sd(PER), SE = sd(PER)/sqrt(n()), size = n(), CV = (SD/mean)*100 )
+  
+  estim_mean_PER1 <- estim_mean_PER1 %>% mutate(Interval = replace(Interval, Interval == "Int1", "Int1.PER")) %>% 
+    filter(Interval %in% c("Int1.PER"))
+  estimates_PER1  <- as.data.frame(cast(estim_mean_PER1, Sample_identifier~Interval, value = "mean"))
+  deviations_PER1 <- as.data.frame(cast(estim_mean_PER1, Sample_identifier~Interval, value = "SD"))
+  
+  estimates <- merge(estimates, estimates_PER1, all.x = TRUE)
+  deviations <- merge(deviations, deviations_PER1, all.x = TRUE)
   # compute Bioenergetics according to the method used
   
   if (method == "OCR") {
@@ -925,7 +992,9 @@ compute_bioenergetics_sample <- function(dm_r, method) {
              Basal.Resp       = Int1 - Int4,
              ATP.linked.Resp  = Int1 - Int2,
              Proton.Leak      = Int2 - Int4,
-             Non.Mito.Resp    = Int4) %>%
+             Non.Mito.Resp    = Int4,
+             mitoATP.prod.rate = (Int1 - Int2)*2*2.75,
+             glycoATP.prod.rate = Int1.PER-((Int1-Int4)*0.61)) %>%
       select(-c("Int1", "Int2", "Int4"))
     # standard errors of mean differences
     sd_n   <- cbind(sd = deviations, n = numbers)
@@ -934,15 +1003,19 @@ compute_bioenergetics_sample <- function(dm_r, method) {
              Basal.Resp       = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)),
              ATP.linked.Resp  = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
              Proton.Leak      = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
-             Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
-      select(c("Sample_identifier", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Non.Mito.Resp"))
+             Non.Mito.Resp    = sd.Int4/sqrt(n.Int4),
+             mitoATP.prod.rate = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
+             glycoATP.prod.rate = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)+((sd.Int1.PER^2)/n.Int1))) %>%
+      select(c("Sample_identifier", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Non.Mito.Resp", "mitoATP.prod.rate", "glycoATP.prod.rate"))
     sd_errors <- sd_n %>% 
       mutate(Sample_identifier           = sd.Sample_identifier,
              Basal.Resp       = sqrt((sd.Int1^2)+(sd.Int4^2)),
              ATP.linked.Resp  = sqrt((sd.Int1^2)+(sd.Int2^2)),
              Proton.Leak      = sqrt((sd.Int2^2)+(sd.Int4^2)),
-             Non.Mito.Resp    = sd.Int4) %>%
-      select(c("Sample_identifier", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Non.Mito.Resp"))
+             Non.Mito.Resp    = sd.Int4,
+             mitoATP.prod.rate = sqrt((sd.Int1^2)+(sd.Int2^2)),
+             glycoATP.prod.rate = sqrt((sd.Int1^2)+(sd.Int4^2)+(sd.Int1.PER^2))) %>%
+      select(c("Sample_identifier", "Basal.Resp", "ATP.linked.Resp", "Proton.Leak", "Non.Mito.Resp", "mitoATP.prod.rate", "glycoATP.prod.rate"))
     
     
   } else if (method == "LOCR") {
@@ -952,7 +1025,9 @@ compute_bioenergetics_sample <- function(dm_r, method) {
              log.Basal.Resp       = Int1 - Int4,
              log.ATP.linked.Resp  = Int1 - Int2,
              log.Proton.Leak      = Int2 - Int4,
-             log.Non.Mito.Resp    = Int4) %>%
+             log.Non.Mito.Resp    = Int4,
+             log.mitoATP.prod.rate = (Int1 - Int2)*2*2.75,
+             log.glycoATP.prod.rate = Int1.PER-((Int1-Int4)*0.61)) %>%
       select(-c("Int1", "Int2", "Int4"))
     # standard errors of mean differences
     sd_n   <- cbind(sd = deviations, n = numbers)
@@ -961,15 +1036,19 @@ compute_bioenergetics_sample <- function(dm_r, method) {
              log.Basal.Resp       = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)),
              log.ATP.linked.Resp  = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
              log.Proton.Leak      = sqrt(((sd.Int2^2)/n.Int2)+((sd.Int4^2)/n.Int4)),
-             log.Non.Mito.Resp    = sd.Int4/sqrt(n.Int4)) %>%
-      select(c("Sample_identifier", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Non.Mito.Resp"))
+             log.Non.Mito.Resp    = sd.Int4/sqrt(n.Int4),
+             log.mitoATP.prod.rate = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int2^2)/n.Int2)),
+             log.glycoATP.prod.rate = sqrt(((sd.Int1^2)/n.Int1)+((sd.Int4^2)/n.Int4)+((sd.Int1.PER^2)/n.Int1))) %>%
+      select(c("Sample_identifier", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Non.Mito.Resp", "log.mitoATP.prod.rate", "log.glycoATP.prod.rate"))
     sd_errors <- sd_n %>% 
       mutate(Sample_identifier           = sd.Sample_identifier,
              log.Basal.Resp       = sqrt((sd.Int1^2)+(sd.Int4^2)),
              log.ATP.linked.Resp  = sqrt((sd.Int1^2)+(sd.Int2^2)),
              log.Proton.Leak      = sqrt((sd.Int2^2)+(sd.Int4^2)),
-             log.Non.Mito.Resp    = sd.Int4) %>%
-      select(c("Sample_identifier", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Non.Mito.Resp"))
+             log.Non.Mito.Resp    = sd.Int4,
+             log.mitoATP.prod.rate = sqrt((sd.Int1^2)+(sd.Int2^2)),
+             log.glycoATP.prod.rate = sqrt((sd.Int1^2)+(sd.Int4^2)+(sd.Int1.PER^2))) %>%
+      select(c("Sample_identifier", "log.Basal.Resp", "log.ATP.linked.Resp", "log.Proton.Leak", "log.Non.Mito.Resp", "log.mitoATP.prod.rate", "log.glycoATP.prod.rate"))
     
   } else if (method == "PER") {
     bio_e <- estimates %>%
