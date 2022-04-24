@@ -541,7 +541,7 @@ idfy_sinleP_outlier <- function(DT, cut.point, x ) {
   return(dm_r)
 }
 
-# ---------------------------------------------------------------------- IDENTIFY OUTLIARS
+# ---------------------------------------------------------------------- IDENTIFY OUTLIERS
 # WELLS AND SINGLE POINT, COMBINED (Excluded from used Pipeline)
 idfy_outlier <- function(DT, x, cut.well, cut.point ){
   

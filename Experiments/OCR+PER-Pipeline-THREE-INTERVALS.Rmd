@@ -179,7 +179,7 @@ sumar <- d_OCR %>%
   summarise(n = n()) %>% 
   filter(n < 18)
 
-# number of intervals has to be 4 or the well discarted 
+# number of intervals has to be 3 or the well discarted 
 inter <- d_OCR %>% 
   group_by(sample_id) %>% 
   summarise(n_inter = length(unique(Interval))) %>% 
@@ -191,8 +191,8 @@ d_OCR <- d_OCR %>%
 d_OCR <- d_OCR %>% 
   filter(! sample_id %in% unique(inter$sample_id))
 
-cat("Wells removed due lack of usable measurements (Less than six usable wells in any interval): ", paste(unique(sumar$sample_id), collapse = "\n"), sep = "\n")
-cat("Wells removed because there are not four intervals: ", paste(unique(inter$sample_id), collapse = "\n"), sep = "\n")
+cat("Replicates removed due lack of usable measurements (Less than 18 measurements in each interval): ", paste(unique(sumar$sample_id), collapse = "\n"), sep = "\n")
+cat("Replicates removed because they have less or more than three intervals: ", paste(unique(inter$sample_id), collapse = "\n"), sep = "\n")
 ```
 
 <br>
@@ -203,7 +203,7 @@ Steps performed: <br>
 
 Removed outliers in each iteration: <br>
 ```{r echo=FALSE}
-# Identify Outliars
+# Identify outliers
 # DT = loaded dataframe
 # cut.well = threshold for well outliaer,
 # cut.point = threshold for point outliaer
@@ -217,7 +217,7 @@ write_xlsx(dr_ocr, paste0(OUTPUT_PATH,"/.Data_removed_OCR.xlsx"))
 ```
 
 ```{r echo=FALSE, warning=FALSE, echo=FALSE}
-# amount of removed outliars
+# amount of removed outliers
 dr_ocr %>%
   group_by(sample_id, is.out.p) %>%
   summarise(n = n()) %>%
@@ -320,7 +320,7 @@ summary_plot_function2(norm.be.well, norm.be.replicate, norm.be.sample)+
     theme(axis.text.x=element_text(angle = -90, hjust = 0))
 
 
-summary_plot_function2(norm.be.well, norm.be.replicate, norm.be.sample)+
+summary_plot_function2(log.be.well, log.be.replicate, log.be.sample)+
     ggtitle("LOCR estimates shown by well, replicate and sample")+
     ylab(expression("Mean LOCR value [log10(pmol O"[2]*" min"^-1*" 1000 cells"^-1*")]"))+
     theme(axis.text.x=element_text(angle = -90, hjust = 0))
@@ -504,7 +504,7 @@ l.bio.replicate[1:4,] %>%
 # Interval 3 and 4 is not used
 d_PER <- dm %>% filter(!Interval %in% c("Int3", "Int4"))
 
-# filter out samples with any of intervals having less than 8 measurements
+# filter out samples with any of intervals having less than 18 measurements
 sumar <- d_PER %>%
   group_by(sample_id, Interval) %>%
   summarise(n = n()) %>%
@@ -520,13 +520,13 @@ d_PER <- d_PER %>%
   filter(! sample_id %in% unique(sumar$sample_id)) %>%
   filter(! sample_id %in% unique(inter$sample_id))
 
-cat("Wells removed due lack of usable measurements (Less than six usable wells in any interval): ", paste(unique(sumar$sample_id), collapse = "\n"), sep = "\n")
-cat("Wells removed because there are not four intervals: ", paste(unique(inter$sample_id), collapse = "\n"), sep = "\n")
+cat("Replicates removed due lack of usable measurements (Less than 18 measurements in each interval): ", paste(unique(sumar$sample_id), collapse = "\n"), sep = "\n")
+cat("Replicates removed because they have less or more than two intervals: ", paste(unique(inter$sample_id), collapse = "\n"), sep = "\n")
 ```
 
 ## Identify and remove outliers
 ```{r echo=FALSE, echo=FALSE}
-# Identify Outliars
+# Identify outliers
 # DT = loaded dataframe
 # cut.well = threshold for well outliaer,
 # cut.point = threshold for point outliaer
@@ -558,22 +558,54 @@ dr_per %>%
 <br>
 
 ### Print schemes of removed points for all samples
-```{r echo=FALSE}
-ylim_low <- min(dr_per$PER) #write - x where x is a number to adjust the starting point of the y axis
-ylim_high <- max(dr_per$PER)
+```{r echo=FALSE, figures-side, fig.show="hold", out.width="50%"}
+# ylim_low <- min(dr_per$PER) #write - x where x is a number to adjust the starting point of the y axis
+# ylim_high <- max(dr_per$PER)
 for (smpl in unique(dr_per$sample_id)) {
+  d    <- filter(dr_per, sample_id == smpl)
+  ptg  <- nrow(filter(d, is.out.p == T))/nrow(d)*100
   plot <- ggplot(filter(dr_per, sample_id == smpl), aes(Measurement, PER))+
-            ggtitle(paste0("SAMPLE:  ", smpl))+
+            ggtitle(paste0("ID: ", smpl, " |  Outliers: ", format(ptg, digits = 3), "%"))+
             geom_line(aes(group = Well),size = 0.2, color = "grey") +
             geom_point(aes(Measurement, PER, color = is.out.p))+
             guides(color=guide_legend(title="Outlier"))+
             xlab("Measurement")+
-            ylim(ylim_low,ylim_high)+
+            # ylim(ylim_low,ylim_high)+
+            scale_x_continuous(breaks = seq(from = 0, to = 7, by = 1))+
             ylab(expression("Mean PER value [pmol H"["+"]*" min"^-1*" 1000 cells"^-1*"]"))+
             NULL
 
   print(plot +theme_bw())
+  
+  d    <- filter(dr_ocr, sample_id == smpl)
+  ptg  <- nrow(filter(d, is.out.p == T))/nrow(d)*100
+  plot <- ggplot(d, aes(Measurement, OCR))+
+            ggtitle(paste0("ID: ", smpl, " |  Outliers: ", format(ptg, digits = 3), "%"))+
+            geom_line(aes(group = Well),size = 0.2, color = "grey") +
+            geom_point(aes(Measurement, OCR, color = is.out.p))+
+            guides(color=guide_legend(title="Outlier"))+
+            xlab("Measurement")+
+            scale_x_continuous(breaks = seq(from = 0, to = 10, by = 1))+
+            # ylim(0,15)+
+            ylab(expression("Mean OCR value [pmol O"[2]*" min"^-1*" 1000 cells"^-1*"]"))
+
+  print(plot +theme_bw())
 }
+
+# for (smpl in unique(dr_ocr$sample_id)) {
+#   d    <- filter(dr_ocr, sample_id == smpl)
+#   ptg  <- nrow(filter(d, is.out.p == T))/nrow(d)*100
+#   plot <- ggplot(d, aes(Time, OCR))+
+#             ggtitle(paste0("ID: ", smpl, " |  Outliers: ", format(ptg, digits = 3), "%"))+
+#             geom_line(aes(group = Well),size = 0.2, color = "grey") +
+#             geom_point(aes(Time, OCR, color = is.out.p))+
+#             guides(color=guide_legend(title="Outlier"))+
+#             xlab("Measurement")+
+#             # ylim(0,15)+
+#             ylab(expression("Mean OCR value [pmol O"[2]*" min"^-1*" 1000 cells"^-1*"]"))
+# 
+#   print(plot +theme_bw())
+# }
 ```
 
 <br>
