@@ -645,19 +645,19 @@ compute_bioenergetics_replicate <- function(dm_r, method) {
   # we are using median instead !!!
   estim_mean <- dr %>%
     group_by(sample_id, Interval) %>%
-    summarise(mean = mean(x), SD = sd(x), SE = sd(x)/sqrt(n()), size = n(), CV = (SD/mean)*100 )
+    summarise(mean = mean(x), SD = sd(x), SE = sd(x)/sqrt(n()), measurements = n(), CV = (SD/mean)*100 )
   
   # form datafames
   estimates  <- as.data.frame(cast(estim_mean, sample_id~Interval, value = "mean"))
   deviations <- as.data.frame(cast(estim_mean, sample_id~Interval, value = "SD"))
   SErrs      <- as.data.frame(cast(estim_mean, sample_id~Interval, value = "SE"))
-  numbers    <- as.data.frame(cast(estim_mean, sample_id~Interval, value = "size"))
+  numbers    <- as.data.frame(cast(estim_mean, sample_id~Interval, value = "measurements"))
   CVs        <- as.data.frame(cast(estim_mean, sample_id~Interval, value = "CV"))
   
   # This is used in the ATP calculations. 
   estim_mean_PER1 <- dr %>%
     group_by(sample_id, Interval) %>%
-    summarise(mean = mean(PER), SD = sd(PER), SE = sd(PER)/sqrt(n()), size = n(), CV = (SD/mean)*100 )
+    summarise(mean = mean(PER), SD = sd(PER), SE = sd(PER)/sqrt(n()), measurements = n(), CV = (SD/mean)*100 )
   
   estim_mean_PER1 <- estim_mean_PER1 %>% mutate(Interval = replace(Interval, Interval == "Int1", "Int1.PER")) %>% 
     filter(Interval %in% c("Int1.PER"))
@@ -796,20 +796,20 @@ compute_bioenergetics_well <- function(dm_r, method) {
   # we are using median instead !!!
   estim_mean <- dr %>%
     group_by(sample_id, Interval, Well) %>%
-    summarise(mean = mean(x), SD = sd(x), SE = sd(x)/sqrt(n()), size = n(), CV = (SD/mean)*100 )
+    summarise(mean = mean(x), SD = sd(x), SE = sd(x)/sqrt(n()), measurements = n(), CV = (SD/mean)*100 )
   
   # form datafames
   estimates  <- as.data.frame(cast(estim_mean, sample_id + Well~Interval, value = "mean"))
   deviations <- as.data.frame(cast(estim_mean, sample_id + Well~Interval, value = "SD"))
   SErrs      <- as.data.frame(cast(estim_mean, sample_id + Well~Interval, value = "SE"))
-  numbers    <- as.data.frame(cast(estim_mean, sample_id + Well~Interval, value = "size"))
+  numbers    <- as.data.frame(cast(estim_mean, sample_id + Well~Interval, value = "measurements"))
   CVs        <- as.data.frame(cast(estim_mean, sample_id + Well~Interval, value = "CV"))
   
   
   # This is used in the ATP calculations. 
   estim_mean_PER1 <- dr %>%
     group_by(sample_id, Interval, Well) %>%
-    summarise(mean = mean(PER), SD = sd(PER), SE = sd(PER)/sqrt(n()), size = n(), CV = (SD/mean)*100 )
+    summarise(mean = mean(PER), SD = sd(PER), SE = sd(PER)/sqrt(n()), measurements = n(), CV = (SD/mean)*100 )
   
   estim_mean_PER1 <- estim_mean_PER1 %>% mutate(Interval = replace(Interval, Interval == "Int1", "Int1.PER")) %>% 
     filter(Interval %in% c("Int1.PER"))
@@ -961,20 +961,20 @@ compute_bioenergetics_sample <- function(dm_r, method) {
   # we are using median instead !!!
   estim_mean <- dr %>%
     group_by(Sample_identifier, Interval) %>%
-    summarise(mean = mean(x), SD = sd(x), SE = sd(x)/sqrt(n()), size = n(), CV = (SD/mean)*100 )
+    summarise(mean = mean(x), SD = sd(x), SE = sd(x)/sqrt(n()), measurements = n(), CV = (SD/mean)*100 )
   
   # form datafames
   estimates  <- as.data.frame(cast(estim_mean, Sample_identifier~Interval, value = "mean"))
   deviations <- as.data.frame(cast(estim_mean, Sample_identifier~Interval, value = "SD"))
   SErrs      <- as.data.frame(cast(estim_mean, Sample_identifier~Interval, value = "SE"))
-  numbers    <- as.data.frame(cast(estim_mean, Sample_identifier~Interval, value = "size"))
+  numbers    <- as.data.frame(cast(estim_mean, Sample_identifier~Interval, value = "measurements"))
   CVs        <- as.data.frame(cast(estim_mean, Sample_identifier~Interval, value = "CV"))
   
   
   # This is used in the ATP calculations. 
   estim_mean_PER1 <- dr %>%
     group_by(Sample_identifier, Interval) %>%
-    summarise(mean = mean(PER), SD = sd(PER), SE = sd(PER)/sqrt(n()), size = n(), CV = (SD/mean)*100 )
+    summarise(mean = mean(PER), SD = sd(PER), SE = sd(PER)/sqrt(n()), measurements = n(), CV = (SD/mean)*100 )
   
   estim_mean_PER1 <- estim_mean_PER1 %>% mutate(Interval = replace(Interval, Interval == "Int1", "Int1.PER")) %>% 
     filter(Interval %in% c("Int1.PER"))

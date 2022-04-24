@@ -249,7 +249,7 @@ for (smpl in unique(dr_ocr$sample_id)) {
             guides(color=guide_legend(title="Outlier"))+
             xlab("Measurement")+
             # ylim(0,15)+
-            ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))
+            ylab(expression("Mean OCR value [pmol O"[2]*" min"^-1*" 1000 cells"^-1*"]"))
 
   print(plot +theme_bw())
 }
@@ -286,12 +286,12 @@ write_xlsx(log.be.sample$estimates, paste0(OUTPUT_PATH,"/Estimates_values-LOCR-s
 ## Summary statistics for each sample
 ```{r echo = FALSE}
 summary_plot_function(norm.be.sample)+
-    ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))+
+    ylab(expression("Mean OCR value [pmol O"[2]*" min"^-1*" 1000 cells"^-1*"]"))+
     ggtitle("OCR estimates sample summary (Outliers removed)")
 
 
 summary_plot_function(log.be.sample)+
-    ylab(expression("Mean LOCR value [log(pmol O"[2]*" /1000 cells)]"))+
+    ylab(expression("Mean LOCR value [log(pmol O"[2]*" min"^-1*" 1000 cells"^-1*")]"))+
     ggtitle("LOCR estimates sample summary (Outliers removed)")
 ```
 
@@ -316,13 +316,13 @@ norm.be.replicate$estimates[1:4,] %>%
 ```{r, echo = FALSE,  fig.width = 8}
 summary_plot_function2(norm.be.well, norm.be.replicate, norm.be.sample)+
     ggtitle("OCR estimates shown by well, replicate and sample")+
-    ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))+
+    ylab(expression("Mean OCR value [pmol O"[2]*" min"^-1*" 1000 cells"^-1*"]"))+
     theme(axis.text.x=element_text(angle = -90, hjust = 0))
 
 
 summary_plot_function2(norm.be.well, norm.be.replicate, norm.be.sample)+
     ggtitle("LOCR estimates shown by well, replicate and sample")+
-    ylab(expression("Mean LOCR value [log10(pmol O"[2]*" /1000 cells)]"))+
+    ylab(expression("Mean LOCR value [log10(pmol O"[2]*" min"^-1*" 1000 cells"^-1*")]"))+
     theme(axis.text.x=element_text(angle = -90, hjust = 0))
   
 ```
@@ -352,7 +352,7 @@ n.bio.sample <- melt_bioenergetics_sample(norm.be.sample)
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
 plot <- plot1(n.bio.well,n.bio.replicate, n.bio.sample) + 
   ggtitle("Plot type 1A: Difference based natural scale Bio-Energetics OCR") + 
-  ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))
+  ylab(expression("Mean OCR value [pmol O"[2]*" min"^-1*" 1000 cells"^-1*"]"))
 plot
 ```
 
@@ -374,7 +374,7 @@ Errorbars and mean: All measurements are pooled for each sample/plate across all
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
 plot <- plot2(n.bio.replicate, n.bio.sample)+
   ggtitle("Plot type 2A: Difference based natural scale Bio-Energetics OCR")+
-  ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))
+  ylab(expression("Mean OCR value [pmol O"[2]*" min"^-1*" 1000 cells"^-1*"]"))
 plot
 ```
 
@@ -390,7 +390,7 @@ All measurements for each replicate is pooled, the average OCR estimates are cal
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
 plot <- plot3(n.bio.well) +
   ggtitle("Plot type 3A: Difference based natural scale Bio-Energetics OCR")+
-  ylab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))
+  ylab(expression("Mean OCR value [pmol O"[2]*" min"^-1*" 1000 cells"^-1*"]"))
 plot
 ```
 
@@ -417,7 +417,7 @@ l.bio.sample <- melt_bioenergetics_sample(log.be.sample)
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
 plot <- plot1(l.bio.well,l.bio.replicate, l.bio.sample) + 
   ggtitle("Plot type 1B: Ratio based log scale Bio-Energetics OCR (folds)")+
-  ylab(expression("Mean OCR value [log10(pmol O"[2]*" /1000 cells)]"))
+  ylab(expression("Mean OCR value [log10(pmol O"[2]*" min"^-1*" 1000 cells"^-1*")]"))
 plot
 
 ```
@@ -441,7 +441,7 @@ Errorbars and mean: All measurements are pooled for each sample/plate across all
 
 plot <- plot2(l.bio.replicate, l.bio.sample)+
   ggtitle("Plot type 2B: Ratio based log scale Bio-Energetics OCR (folds)")+
-  ylab(expression("Mean OCR value [log10(pmol O"[2]*" /1000 cells)]"))
+  ylab(expression("Mean OCR value [log10(pmol O"[2]*" min"^-1*" 1000 cells"^-1*")]"))
 plot
 ```
 
@@ -457,7 +457,7 @@ All measurements for each replicate is pooled, the average LOCR estimates are ca
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
 plot <- plot3(l.bio.well) +
   ggtitle("Plot type 3B: Ratio based log scale Bio-Energetics OCR (folds)")+
-  ylab(expression("Mean OCR value [log10(pmol O"[2]*" /1000 cells)]"))
+  ylab(expression("Mean OCR value [log10(pmol O"[2]*" min"^-1*" 1000 cells"^-1*")]"))
 plot
 ```
 
@@ -569,7 +569,7 @@ for (smpl in unique(dr_per$sample_id)) {
             guides(color=guide_legend(title="Outlier"))+
             xlab("Measurement")+
             ylim(ylim_low,ylim_high)+
-            ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))+
+            ylab(expression("Mean PER value [pmol H"["+"]*" min"^-1*" 1000 cells"^-1*"]"))+
             NULL
 
   print(plot +theme_bw())
@@ -605,13 +605,13 @@ write_xlsx(log.be.PER.sample$estimates, paste0(OUTPUT_PATH,"/Estimates_values-LP
 ```{r echo = FALSE}
 summary_plot_function(norm.be.PER.sample)+
     ggtitle("PER estimates sample summary (Outliers removed)")+
-    ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))
+    ylab(expression("Mean PER value [pmol H"["+"]*" min"^-1*" 1000 cells"^-1*"]"))
 
 
 
 summary_plot_function(log.be.PER.sample)+
     ggtitle("LPER estimates sample summary (Outliers removed)")+
-    ylab(expression("Mean LPER value [log(pmol H"["+"]*" /1000 cells)]"))
+    ylab(expression("Mean LPER value [log(pmol H"["+"]*" min"^-1*" 1000 cells"^-1*")]"))
 
 ```
 
@@ -625,13 +625,13 @@ summary_plot_function(log.be.PER.sample)+
 ```{r, echo = FALSE, fig.width = 8}
 summary_plot_function2(norm.be.PER.well, norm.be.PER.replicate, norm.be.PER.sample)+
     ggtitle("PER estimates shown by well, replicate and sample")+
-    ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))+
+    ylab(expression("Mean PER value [pmol H"["+"]*" min"^-1*" 1000 cells"^-1*"]"))+
     theme(axis.text.x=element_text(angle = -90, hjust = 0))
 
 
 summary_plot_function2(norm.be.PER.well, norm.be.PER.replicate, norm.be.PER.sample)+
     ggtitle("LPER estimates shown by well, replicate and sample")+
-    ylab(expression("Mean LPER value [log10(pmol H"["+"]*" /1000 cells)]"))+
+    ylab(expression("Mean LPER value [log10(pmol H"["+"]*" min"^-1*" 1000 cells"^-1*")]"))+
     theme(axis.text.x=element_text(angle = -90, hjust = 0))
 ```
 
@@ -656,7 +656,7 @@ n.bio.PER.sample <- melt_bioenergetics_sample(norm.be.PER.sample)
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
 plot <- plot1(n.bio.PER.well,n.bio.PER.replicate, n.bio.PER.sample) + 
   ggtitle("Plot type 1A: Difference based natural scale Bio-Energetics PER")+
-  ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))
+  ylab(expression("Mean PER value [pmol H"["+"]*" min"^-1*" 1000 cells"^-1*"]"))
 plot
 ```
 
@@ -678,7 +678,7 @@ Errorbars and mean: All measurements are pooled for each sample/plate across all
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
 plot <- plot2(n.bio.PER.replicate, n.bio.PER.sample)+
   ggtitle("Plot type 2A: Difference based natural scale Bio-Energetics PER")+
-  ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))
+  ylab(expression("Mean PER value [pmol H"["+"]*" min"^-1*" 1000 cells"^-1*"]"))
 plot
 ```
 
@@ -694,7 +694,7 @@ All measurements for each replicate is pooled, the average PER estimates are cal
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
 plot <- plot3(n.bio.PER.well) +
   ggtitle("Plot type 3A: Difference based natural scale Bio-Energetics PER")+
-  ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))
+  ylab(expression("Mean PER value [pmol H"["+"]*" min"^-1*" 1000 cells"^-1*"]"))
 plot
 ```
 
@@ -722,7 +722,7 @@ l.bio.PER.sample <- melt_bioenergetics_sample(log.be.PER.sample)
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
 plot <- plot1(l.bio.PER.well,l.bio.PER.replicate, l.bio.PER.sample) + 
   ggtitle("Plot type 1B: Ratio based log scale Bio-Energetics PER (folds)")+
-  ylab(expression("Mean Log(PER) value [log(pmol H"["+"]*" /1000 cells)]"))
+  ylab(expression("Mean Log(PER) value [log(pmol H"["+"]*" min"^-1*" 1000 cells"^-1*")]"))
 plot
 ```
 
@@ -744,7 +744,7 @@ Errorbars and mean: All measurements are pooled for each sample/plate across all
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
 plot <- plot2(l.bio.PER.replicate, l.bio.PER.sample)+
   ggtitle("Plot type 2B: Ratio based log scale Bio-Energetics PER (folds)")+
-  ylab(expression("Mean Log(PER) value [log(pmol H"["+"]*" /1000 cells)]"))
+  ylab(expression("Mean Log(PER) value [log(pmol H"["+"]*" min"^-1*" 1000 cells"^-1*")]"))
 plot
 ```
 
@@ -760,7 +760,7 @@ All measurements for each replicate is pooled, the average LPER estimates are ca
 ```{r message=FALSE, warning=FALSE, echo=FALSE, fig.width=10}
 plot <- plot3(l.bio.PER.well) +
   ggtitle("Plot type 3B: Ratio based log scale Bio-Energetics PER (folds)")+
-  ylab(expression("Mean Log(PER) value [log(pmol H"["+"]*" /1000 cells)]"))
+  ylab(expression("Mean Log(PER) value [log(pmol H"["+"]*" min"^-1*" 1000 cells"^-1*")]"))
 plot
 ```
 
@@ -849,8 +849,8 @@ total.well %>% ggplot()+
                       color = "black", width=0.1, size = 0.8)+
   scale_color_brewer(palette = "Dark2")+
   scale_fill_brewer(palette = "Dark2")+
-  xlab(expression("Mean OCR value [pmol O"[2]*" /1000 cells]"))+
-  ylab(expression("Mean PER value [pmol H"["+"]*" /1000 cells]"))+
+  xlab(expression("Mean OCR value [pmol O"[2]*" min"^-1*" 1000 cells"^-1*"]"))+
+  ylab(expression("Mean PER value [pmol H"["+"]*" min"^-1*" 1000 cells"^-1*"]"))+
   theme_bw()+
   coord_equal(ratio = 1)+
   labs(fill = "Sample_identifier")+
@@ -885,8 +885,8 @@ ATPplot.well %>% ggplot()+
                       color = "black", width=0.1, size = 0.8)+
   scale_color_brewer(palette = "Dark2")+
   scale_fill_brewer(palette = "Dark2")+
-  xlab(expression("Glyco ATP Production Rate [pmol O"[2]*" /1000 cells]"))+
-  ylab(expression("Mito ATP Production Rate [pmol H"["+"]*" /1000 cells]"))+
+  xlab(expression("Glyco ATP Production Rate [pmol ATP min"^-1*" 1000 cells"^-1*"]"))+
+  ylab(expression("Mito ATP Production Rate [pmol ATP min"^-1*" 1000 cells"^-1*"]"))+
   theme_bw()+
   coord_equal(ratio = 1)+
   # labs(fill = "Sample")+
