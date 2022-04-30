@@ -878,13 +878,13 @@ total.well %>% ggplot()+
                   aes(y = mean.PER, x = mean.OCR, 
                       xmin=mean.OCR-eval(parse(text = paste(params$error_measure, ".OCR", sep = ""))), 
                       xmax=mean.OCR+eval(parse(text = paste(params$error_measure, ".OCR", sep = "")))),
-                      color = "black", width=0.1, size = 0.8)+
+                      color = "black", width=0.9, size = 0.8)+
   scale_color_brewer(palette = "Dark2")+
   scale_fill_brewer(palette = "Dark2")+
   xlab(expression("Mean OCR value [pmol O"[2]*" min"^-1*" 1000 cells"^-1*"]"))+
   ylab(expression("Mean PER value [pmol H"["+"]*" min"^-1*" 1000 cells"^-1*"]"))+
   theme_bw()+
-  coord_equal(ratio = 1)+
+  # coord_equal(ratio = 1)+
   labs(fill = "Sample_identifier")+
     NULL
 ```
