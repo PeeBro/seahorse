@@ -363,7 +363,7 @@ read_xlsx_set <- function(path_, pattern_){
       ungroup() %>% 
       group_by(Well) %>%
       summarise(average_mmHg = mean(`O2 (mmHg)`), # Calculates average Hg of the measurements (first tick of each) in interval 1 for each well
-                out          = ifelse(average_mmHg > 160 | average_mmHg < 133, T, F )) %>%
+                out          = ifelse(average_mmHg > 160 | average_mmHg < 100, T, F )) %>%
       filter(out == T)
     
     # remove Unassigned wells

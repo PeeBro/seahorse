@@ -169,7 +169,7 @@ data$Bad_Cells %>%
 # OCR 
 ## Filter out irrelevant samples 
 Steps performed: <br>
-- Check that the number of intervals for each sample is four and that no sample has an interval with less than 18 measurements <br>
+- Check that the number of intervals for each sample is three and that no sample has an interval with less than 18 measurements <br>
 ```{r  echo=FALSE, message = FALSE}
 d_OCR  <- dm
 
