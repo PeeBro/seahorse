@@ -122,7 +122,7 @@ Steps performed: <br>
 
 ```{r echo=FALSE}
 data$Hg_list %>%  
-  kable(caption="Wells removed. Out of 140-160 mmHg interval") %>% 
+  kable(caption="Wells removed. Out of 100-160 mmHg interval") %>% 
   kable_styling()
 
 ```

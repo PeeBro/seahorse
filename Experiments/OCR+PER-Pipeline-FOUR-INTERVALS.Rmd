@@ -123,7 +123,7 @@ Steps performed: <br>
 
 ```{r echo=FALSE}
 data$Hg_list %>%  
-  kable(caption="Wells removed. Out of 140-160 mmHg interval") %>% 
+  kable(caption="Wells removed. Out of 100-160 mmHg interval") %>% 
   kable_styling()
 
 ```
@@ -192,8 +192,10 @@ d_OCR <- d_OCR %>%
 d_OCR <- d_OCR %>% 
   filter(! sample_id %in% unique(inter$sample_id))
 
-cat("Wells removed due lack of usable measurements (Less than six usable wells in any interval): ", paste(unique(sumar$sample_id), collapse = "\n"), sep = "\n")
-cat("Wells removed because there are not four intervals: ", paste(unique(inter$sample_id), collapse = "\n"), sep = "\n")
+
+cat("Replicates removed due lack of usable measurements (Less than 18 measurements in each interval): ", paste(unique(sumar$sample_id), collapse = "\n"), sep = "\n")
+cat("Replicates removed because they have less or more than four intervals: ", paste(unique(inter$sample_id), collapse = "\n"), sep = "\n")
+
 ```
 
 <br>
@@ -519,8 +521,11 @@ d_PER <- d_PER %>%
   filter(! sample_id %in% unique(sumar$sample_id)) %>%
   filter(! sample_id %in% unique(inter$sample_id))
 
-cat("Wells removed due lack of usable measurements (Less than six usable wells in any interval): ", paste(unique(sumar$sample_id), collapse = "\n"), sep = "\n")
-cat("Wells removed because there are not four intervals: ", paste(unique(inter$sample_id), collapse = "\n"), sep = "\n")
+
+
+cat("Replicates removed due lack of usable measurements (Less than 18 measurements in each interval): ", paste(unique(sumar$sample_id), collapse = "\n"), sep = "\n")
+cat("Replicates removed because they have less or more than two intervals: ", paste(unique(inter$sample_id), collapse = "\n"), sep = "\n")
+
 ```
 
 ## Identify and remove outliers
