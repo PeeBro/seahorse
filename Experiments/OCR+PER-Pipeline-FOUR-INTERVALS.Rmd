@@ -157,6 +157,13 @@ data$No_cells_measured %>%
 ```
 
 ```{r echo=FALSE}
+data$Bad_Cells_measured %>%  
+  kable(caption="Wells with outlier cell counts") %>% 
+  kable_styling()
+
+```
+
+```{r echo=FALSE}
 data$Bad_Cells %>%  
   kable(caption="Wells with OCR < 10 in first interval") %>% 
   kable_styling()

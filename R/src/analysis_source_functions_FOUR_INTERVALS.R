@@ -240,19 +240,29 @@ normalize_based_on_cell_counts <- function(filename, d) {
   cell_counts <- cell_counts %>% mutate(cells_1000 = cells/1000,
                                         Well = paste(well_row, well_col, sep = ""))
   
-  # Remove unwanted columns
-  cell_counts <- cell_counts[4:5]
+
   
   # Add the cell/1000 count values too the d table, and calculate the normalized OCR, ECAR and PER
   d <- merge(d, cell_counts)
   
+  d <- d %>%
+    group_by(Group) %>%
+    mutate( Z_mod = abs((cells - median(cells))/mad(cells)))
+
+
+  d <- d %>% mutate(cellOut = ifelse(Z_mod > 3.26, T, F))
+ 
+  # Remove unwanted columns FROM D!!!!
+  d <- d %>% select(-c(well_row, well_col, cells, Z_mod))
+  
+   
   d <- d %>% mutate(OCR_norm = OCR/cells_1000,
                     PER_norm = PER/cells_1000,
                     ECAR_norm = ECAR/cells_1000) 
   
   # Remove old OCR, ECAR and PER columns, and rename the normalized columns to OCR, ECAR, PER
   d <- d %>% select(!c(OCR, ECAR, PER))
-  colnames(d)[7:9] <- c("OCR", "PER", "ECAR")
+  d <- d %>%  rename(OCR = OCR_norm, PER = PER_norm, ECAR = ECAR_norm)
       
   
   return(d)
@@ -286,6 +296,7 @@ read_xlsx_set <- function(path_, pattern_){
   Empty_out <- data_frame()
   No_cells_out <- data_frame()
   Bad_cells_out <- data_frame()
+  Bad_cells_measurement_out <- data_frame()
   
   # for every file create a data frame and merge into one
   for (x in files) {
@@ -421,6 +432,13 @@ read_xlsx_set <- function(path_, pattern_){
     #### Normalize based on cell counts (pr. 1000 cells) and remove wells where no cells are measured
     d <- normalize_based_on_cell_counts(x,d)
 
+    out <- d %>% filter(cellOut == TRUE)
+    bad_cell_measure <- report_removed_wells(out)
+    d <- d %>% filter(!cellOut == TRUE)
+    Bad_cells_measurement_out <- rbind(Bad_cells_measurement_out, bad_cell_measure)
+    
+    
+    
     out <- d %>% filter(cells_1000 == 0)
     no_cells_measured <- report_removed_wells(out)
     d <- d %>% filter(!cells_1000 == 0)
@@ -467,7 +485,7 @@ read_xlsx_set <- function(path_, pattern_){
   }
   
   
-  return(list(rates = merged_d, Hg_list = Hg_out, PER_background = PER_background_out, OCR_background = OCR_background_out, Zero_measurements = Empty_out, No_cells_measured = No_cells_out, Bad_Cells = Bad_cells_out))
+  return(list(rates = merged_d, Hg_list = Hg_out, PER_background = PER_background_out, OCR_background = OCR_background_out, Zero_measurements = Empty_out, No_cells_measured = No_cells_out, Bad_Cells = Bad_cells_out, Bad_Cells_measured = Bad_cells_measurement_out))
 }
 # -------------------------------------------------------------- IDENTIFY SINGLE POINT OUTLIARS
 # USED IN WORKING PIPELINE
