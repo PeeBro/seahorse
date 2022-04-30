@@ -1,6 +1,0 @@
-"0","# data_seahorse$Code <- paste0(data_seahorse$Project, ""-"", data_seahorse$Code)
-# patients_data$Code <- paste0(patients_data$Project, ""-"", patients_data$Code)
-d <- merge(data_seahorse, patients_data, by = c*(""Project"", ""Code""))
-"
-"2","Error: unexpected ',' in ""d <- merge(data_seahorse, patients_data, by = c*(""Project"",""
-"
